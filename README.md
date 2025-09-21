@@ -104,6 +104,18 @@ Extend via `langpacks/xxx.langpack.json`.
 **作者 Author**: Ice Xu / RetryIX AGI  
 **授權 License**: MIT License
 
+🌍 ZHCL is an open semantic language compiler  
+designed for transparent, multilingual logic execution.
+
+All language packages, mappings, and extensions are  
+openly licensed under [MIT / Custom OSL], and  
+ZHCL strongly advocates **language rights and logic visibility**.
+
+This project rejects closed adaptation, military repackaging,  
+or authoritarian misuse of semantic logic.
+
+Logic belongs to people. Language belongs to everyone.
+
 ---
 
 ## 🔥 最後的話
