@@ -14,6 +14,7 @@
 // Build same as before:
 //   g++ -std=c++17 zhcl_one.cpp -o zhcl
 //   cl /std:c++17 zhcl_one.cpp /Fe:zhcl.exe
+#include "../include/chinese.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -258,6 +259,7 @@ static int passthrough(const std::string& tool, int argc, char** argv, int start
 
 // ---------- main ----------
 int main(int argc, char** argv){
+    初始化中文環境();
     Ctx cx; cx.root=fs::current_path(); cx.outdir=cx.root/"build"; cx.tc=detectFull(); cx.cache.path=cx.root/".zhcl"/"cache.txt";
     if(argc<=1){ usage(); return 0; }
     std::string cmd=argv[1];
