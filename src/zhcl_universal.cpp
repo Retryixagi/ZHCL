@@ -43,12 +43,29 @@ using namespace std;
 
 namespace selfhost {
 
-static const uint64_t SH_MAGIC = 0x305941505A48435Full; // 任意常數（檔尾魔數）
+// ---- New: CRC32 (簡單、足夠) ----
+static uint32_t crc32(const uint8_t* data, size_t len){
+    uint32_t c = 0xFFFFFFFFu;
+    for(size_t i=0;i<len;i++){
+        c ^= data[i];
+        for(int k=0;k<8;k++){
+            uint32_t m = -(int)(c & 1u);
+            c = (c >> 1) ^ (0xEDB88320u & m);
+        }
+    }
+    return ~c;
+}
+
+static const uint64_t SH_MAGIC = 0x305941505A48435Full; // 同原本
+static const uint32_t SH_VERSION = 1;                   // <== New: 版本
+
 #pragma pack(push,1)
 struct Trailer {
-    uint64_t magic;         // SH_MAGIC
-    uint64_t payload_size;  // 位元碼長度
-    uint64_t payload_offset;// 位元碼起始位移
+    uint64_t magic;          // SH_MAGIC
+    uint64_t payload_size;   // 位元碼長度
+    uint64_t payload_offset; // 位元碼起點
+    uint32_t version;        // <== New
+    uint32_t crc32;          // <== New (對 payload 計算)
 };
 #pragma pack(pop)
 
@@ -79,6 +96,8 @@ static std::vector<uint8_t> enc_print(const std::string& s){
 // ---- 直譯器（執行位元碼）----
 static void execute_bc(const std::vector<uint8_t>& bc){
 #ifdef _WIN32
+    // 設置控制台代碼頁為 UTF-8 以正確顯示中文
+    SetConsoleOutputCP(65001);
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD w=0;
     size_t i=0;
@@ -112,7 +131,33 @@ static void execute_bc(const std::vector<uint8_t>& bc){
 #endif
 }
 
-// ---- 啟動時：檢查檔尾是否附帶 payload，有就直接執行 ----
+// ---- New: 讀取 + 驗證 trailer，回傳 payload 與資訊 ----
+struct PayloadInfo {
+    std::vector<uint8_t> data;
+    Trailer tr{};
+    bool ok=false;
+    bool crc_ok=false;
+};
+static PayloadInfo read_payload_from_file(const std::filesystem::path& exe){
+    PayloadInfo R;
+    std::ifstream f(exe, std::ios::binary); if(!f) return R;
+    f.seekg(0, std::ios::end);
+    auto sz = (uint64_t)f.tellg();
+    if(sz < sizeof(Trailer)) return R;
+    f.seekg(sz - sizeof(Trailer));
+    f.read((char*)&R.tr, sizeof(Trailer));
+    if(!f || R.tr.magic != SH_MAGIC) return R;
+    R.ok = true;
+    R.data.resize((size_t)R.tr.payload_size);
+    f.seekg((std::streamoff)R.tr.payload_offset);
+    f.read((char*)R.data.data(), (std::streamsize)R.tr.payload_size);
+    if(!f) { R.ok=false; return R; }
+    uint32_t c = crc32(R.data.data(), R.data.size());
+    R.crc_ok = (c == R.tr.crc32);
+    return R;
+}
+
+// ---- runtime：啟動時若帶 payload 就印自證橫幅 -> 執行 -> 退出 ----
 static bool maybe_run_embedded_payload(){
 #ifdef _WIN32
     wchar_t pathW[MAX_PATH]{0};
@@ -121,17 +166,25 @@ static bool maybe_run_embedded_payload(){
 #else
     std::filesystem::path self = "/proc/self/exe";
 #endif
-    std::ifstream f(self, std::ios::binary); if(!f) return false;
-    f.seekg(0, std::ios::end);
-    auto sz = (uint64_t)f.tellg(); if(sz < sizeof(Trailer)) return false;
-    f.seekg(sz - sizeof(Trailer));
-    Trailer t{}; f.read((char*)&t, sizeof(Trailer));
-    if(!f || t.magic != SH_MAGIC) return false;
-    std::vector<uint8_t> payload; payload.resize((size_t)t.payload_size);
-    f.seekg((std::streamoff)t.payload_offset);
-    f.read((char*)payload.data(), (std::streamsize)t.payload_size);
-    if(!f) return false;
-    execute_bc(payload); // 不回傳
+    auto R = read_payload_from_file(self);
+    if(!R.ok) return false;
+
+    // 自證訊息（可以用環境變數關閉，例如 ZHCL_SELFHOST_QUIET=1）
+    const char* q = std::getenv("ZHCL_SELFHOST_QUIET");
+    if(!q || q[0] != '1'){
+        std::printf("[selfhost] payload v%u %s size=%llu crc=%s\n",
+            R.tr.version,
+            (R.ok?"found":"missing"),
+            (unsigned long long)R.tr.payload_size,
+            (R.crc_ok?"OK":"BAD"));
+    }
+
+    if(!R.crc_ok){
+        std::fprintf(stderr, "[selfhost] CRC mismatch, abort.\n");
+        std::exit(3);
+    }
+
+    execute_bc(R.data); // 不返回
     return true;
 }
 
@@ -167,19 +220,23 @@ static std::vector<uint8_t> translate_js_to_bc(const std::string& js){
     return bc;
 }
 
-// ---- 翻譯器：中文自然語言 .zh → 位元碼（PoC：輸出 "…" / 其他原樣）----
+// ---- 翻譯器：中文自然語言 .zh → 位元碼（PoC：輸出字串 "…" / 其他原樣）----
 static std::vector<uint8_t> translate_zh_to_bc(const std::string& zh){
     std::vector<uint8_t> bc; std::istringstream ss(zh); std::string line;
     auto ltrim=[](std::string& s){ size_t i=0; while(i<s.size() && (unsigned char)s[i]<=32) ++i; s.erase(0,i); };
     auto rtrim=[](std::string& s){ while(!s.empty() && (unsigned char)s.back()<=32) s.pop_back(); };
     while(std::getline(ss,line)){
         std::string raw=line; ltrim(line); rtrim(line);
-        if(line.rfind("輸出 ",0)==0){
-            std::string t=line.substr(7-1); // after "輸出 "
-            // 支援 「…」 或 "…"
-            for(char& c: t){ if(c=='『'||c=='「') c='"'; if(c=='』'||c=='」') c='"'; }
-            if(t.size()>=2 && t.front()=='"' && t.back()=='"'){
-                auto v=enc_print(t.substr(1,t.size()-2)); bc.insert(bc.end(), v.begin(), v.end()); continue;
+        if(line.rfind("輸出字串(",0)==0){
+            size_t start = line.find('(');
+            size_t end = line.find_last_of(')');
+            if(start != std::string::npos && end != std::string::npos && end > start){
+                std::string content = line.substr(start + 1, end - start - 1);
+                // 支援 「…」 或 "…"
+                for(char& c: content){ if(c=='『'||c=='「') c='"'; if(c=='』'||c=='」') c='"'; }
+                if(content.size()>=2 && content.front()=='"' && content.back()=='"'){
+                    auto v=enc_print(content.substr(1,content.size()-2)); bc.insert(bc.end(), v.begin(), v.end()); continue;
+                }
             }
         }
         auto v=enc_print(std::string("[未解析] ")+raw); bc.insert(bc.end(), v.begin(), v.end());
@@ -187,7 +244,7 @@ static std::vector<uint8_t> translate_zh_to_bc(const std::string& zh){
     return bc;
 }
 
-// ---- 封裝：把自身複製成 output.exe，附加位元碼 + trailer ----
+// ---- pack：寫入 version 與 CRC、印自證訊息 ----
 static int pack_payload_to_exe(const std::filesystem::path& output_exe,
                                const std::vector<uint8_t>& bc,
 #ifdef _WIN32
@@ -207,8 +264,22 @@ static int pack_payload_to_exe(const std::filesystem::path& output_exe,
     if(!out){ std::fprintf(stderr, "[selfhost] open out for append failed\n"); return 5; }
     uint64_t off = (uint64_t)std::filesystem::file_size(output_exe);
     out.write((const char*)bc.data(), (std::streamsize)bc.size());
-    Trailer tr{SH_MAGIC, (uint64_t)bc.size(), off};
+
+    Trailer tr{};
+    tr.magic = SH_MAGIC;
+    tr.payload_size = (uint64_t)bc.size();
+    tr.payload_offset = off;
+    tr.version = SH_VERSION;                 // <== New
+    tr.crc32 = crc32(bc.data(), bc.size());  // <== New
+
     out.write((const char*)&tr, sizeof(tr)); out.flush();
+
+    std::printf("[selfhost] packed -> %s (v%u, size=%llu, crc=%08X)\n",
+        output_exe.string().c_str(),
+        tr.version,
+        (unsigned long long)tr.payload_size,
+        tr.crc32);
+
     return 0;
 }
 
@@ -220,6 +291,21 @@ static int pack_from_file(const std::string& lang, const std::filesystem::path& 
     else if(lang=="zh")                  bc = translate_zh_to_bc(src);
     else { std::fprintf(stderr, "[selfhost] unsupported lang: %s\n", lang.c_str()); return 2; }
     return pack_payload_to_exe(out, bc);
+}
+
+// ---- 對外入口不變（pack_from_file），下面加 verify 功能即可 ----
+static int verify_exe(const std::filesystem::path& exe){
+    auto R = read_payload_from_file(exe);
+    if(!R.ok){
+        std::fprintf(stderr,"[selfhost] no payload in: %s\n", exe.string().c_str());
+        return 2;
+    }
+    std::printf("[selfhost] verify: %s\n", exe.string().c_str());
+    std::printf("  version : %u\n", R.tr.version);
+    std::printf("  size    : %llu bytes\n", (unsigned long long)R.tr.payload_size);
+    std::printf("  offset  : %llu\n", (unsigned long long)R.tr.payload_offset);
+    std::printf("  crc32   : %08X (%s)\n", R.tr.crc32, R.crc_ok?"OK":"BAD");
+    return R.crc_ok? 0 : 3;
 }
 
 } // namespace selfhost
@@ -1785,8 +1871,9 @@ int main(int argc, char** argv) {
     } else if (command == "clean") {
         return clean_project(verbose);
     } else if (command == "selfhost") {
-        if (argc < 3) { 
-            std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|zh)> -o <output.exe>");
+        if (argc < 3) {
+            std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|zh)> -o <output.exe>\n"
+                      "  zhcl_universal selfhost verify <exe>");
             return 1;
         }
         std::string sub = argv[2];
@@ -1803,8 +1890,10 @@ int main(int argc, char** argv) {
             else if (ext == ".zh") lang = "zh";
             else { std::fprintf(stderr, "[selfhost] unsupported input: %s\n", ext.c_str()); return 2; }
             int rc = selfhost::pack_from_file(lang, in, out);
-            if (rc == 0) std::printf("[selfhost] packed -> %s\n", out.string().c_str());
             return rc;
+        } else if (sub == "verify") {
+            if (argc < 4) { std::puts("Usage:\n  zhcl_universal selfhost verify <exe>"); return 2; }
+            return selfhost::verify_exe(argv[3]); // <== New
         }
         std::fprintf(stderr, "Unknown subcommand: selfhost %s\n", sub.c_str());
         return 1;
