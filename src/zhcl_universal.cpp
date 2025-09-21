@@ -244,6 +244,99 @@ static std::vector<uint8_t> translate_zh_to_bc(const std::string& zh){
     return bc;
 }
 
+// ---- 翻譯器：Python → 位元碼（PoC：print("…") / 其他忽略）----
+static std::vector<uint8_t> translate_py_to_bc(const std::string& py){
+    std::vector<uint8_t> bc; std::istringstream ss(py); std::string line;
+    while(std::getline(ss,line)){
+        // 去除前後空白
+        size_t start = line.find_first_not_of(" \t");
+        if(start == std::string::npos) continue;
+        line = line.substr(start);
+        if(line.empty()) continue;
+
+        auto pos = line.find("print(");
+        if(pos != std::string::npos){
+            // 找到 print( 之後的內容
+            size_t paren_start = line.find('(', pos);
+            if(paren_start == std::string::npos) continue;
+            size_t paren_end = line.find(')', paren_start);
+            if(paren_end == std::string::npos) continue;
+
+            std::string arg = line.substr(paren_start + 1, paren_end - paren_start - 1);
+            // 簡單處理：如果是以引號開始和結束，提取內容
+            if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
+                std::string content = arg.substr(1, arg.size() - 2);
+                auto v = enc_print(content);
+                bc.insert(bc.end(), v.begin(), v.end());
+            }
+        }
+        // 忽略其他行（變數聲明、函數等）
+    }
+    return bc;
+}
+
+// ---- 翻譯器：Go → 位元碼（PoC：fmt.Println("…") / 其他忽略）----
+static std::vector<uint8_t> translate_go_to_bc(const std::string& go){
+    std::vector<uint8_t> bc; std::istringstream ss(go); std::string line;
+    while(std::getline(ss,line)){
+        // 去除前後空白
+        size_t start = line.find_first_not_of(" \t");
+        if(start == std::string::npos) continue;
+        line = line.substr(start);
+        if(line.empty()) continue;
+
+        auto pos = line.find("fmt.Println(");
+        if(pos != std::string::npos){
+            // 找到 fmt.Println( 之後的內容
+            size_t paren_start = line.find('(', pos);
+            if(paren_start == std::string::npos) continue;
+            size_t paren_end = line.find(')', paren_start);
+            if(paren_end == std::string::npos) continue;
+
+            std::string arg = line.substr(paren_start + 1, paren_end - paren_start - 1);
+            // 簡單處理：如果是以引號開始和結束，提取內容
+            if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
+                std::string content = arg.substr(1, arg.size() - 2);
+                auto v = enc_print(content);
+                bc.insert(bc.end(), v.begin(), v.end());
+            }
+        }
+        // 忽略其他行（變數聲明、函數等）
+    }
+    return bc;
+}
+
+// ---- 翻譯器：Java → 位元碼（PoC：System.out.println("…") / 其他忽略）----
+static std::vector<uint8_t> translate_java_to_bc(const std::string& java){
+    std::vector<uint8_t> bc; std::istringstream ss(java); std::string line;
+    while(std::getline(ss,line)){
+        // 去除前後空白
+        size_t start = line.find_first_not_of(" \t");
+        if(start == std::string::npos) continue;
+        line = line.substr(start);
+        if(line.empty()) continue;
+
+        auto pos = line.find("System.out.println(");
+        if(pos != std::string::npos){
+            // 找到 System.out.println( 之後的內容
+            size_t paren_start = line.find('(', pos);
+            if(paren_start == std::string::npos) continue;
+            size_t paren_end = line.find(')', paren_start);
+            if(paren_end == std::string::npos) continue;
+
+            std::string arg = line.substr(paren_start + 1, paren_end - paren_start - 1);
+            // 簡單處理：如果是以引號開始和結束，提取內容
+            if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
+                std::string content = arg.substr(1, arg.size() - 2);
+                auto v = enc_print(content);
+                bc.insert(bc.end(), v.begin(), v.end());
+            }
+        }
+        // 忽略其他行（變數聲明、函數等）
+    }
+    return bc;
+}
+
 // ---- pack：寫入 version 與 CRC、印自證訊息 ----
 static int pack_payload_to_exe(const std::filesystem::path& output_exe,
                                const std::vector<uint8_t>& bc,
@@ -288,7 +381,10 @@ static int pack_from_file(const std::string& lang, const std::filesystem::path& 
     std::string src = read_all(in);
     std::vector<uint8_t> bc;
     if(lang=="js" || lang=="javascript") bc = translate_js_to_bc(src);
-    else if(lang=="zh")                  bc = translate_zh_to_bc(src);
+    else if(lang=="py" || lang=="python") bc = translate_py_to_bc(src);
+    else if(lang=="go")                   bc = translate_go_to_bc(src);
+    else if(lang=="java")                 bc = translate_java_to_bc(src);
+    else if(lang=="zh")                   bc = translate_zh_to_bc(src);
     else { std::fprintf(stderr, "[selfhost] unsupported lang: %s\n", lang.c_str()); return 2; }
     return pack_payload_to_exe(out, bc);
 }
@@ -1879,7 +1975,7 @@ int main(int argc, char** argv) {
         std::string sub = argv[2];
         if (sub == "pack") {
             if (argc < 6 || std::string(argv[4]) != "-o") {
-                std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|zh)> -o <output.exe>");
+                std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>");
                 return 2;
             }
             std::filesystem::path in = argv[3];
@@ -1887,6 +1983,9 @@ int main(int argc, char** argv) {
             std::string lang;
             auto ext = in.extension().string();
             if (ext == ".js") lang = "js";
+            else if (ext == ".py") lang = "py";
+            else if (ext == ".go") lang = "go";
+            else if (ext == ".java") lang = "java";
             else if (ext == ".zh") lang = "zh";
             else { std::fprintf(stderr, "[selfhost] unsupported input: %s\n", ext.c_str()); return 2; }
             int rc = selfhost::pack_from_file(lang, in, out);
