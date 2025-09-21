@@ -22,7 +22,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include <memory>
+#include <unordered_map>
 
 // Use explicit std:: prefix instead of using namespace std
 namespace fs = std::filesystem;
@@ -70,7 +70,12 @@ struct Trailer {
 };
 #pragma pack(pop)
 
-enum Op : uint8_t { OP_PRINT = 1 };
+enum Op : uint8_t {
+    OP_PRINT = 1,
+    OP_PRINT_INT,
+    OP_SET_I64,
+    OP_END
+};
 
 // ---- 前向聲明 ----
 static void disassemble_bc(const std::vector<uint8_t>& bc, std::ostream& out);
@@ -105,6 +110,7 @@ static void execute_bc(const std::vector<uint8_t>& bc){
     SetConsoleOutputCP(65001);
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD w=0;
+    std::vector<int64_t> vars(256, 0); // 變數槽位
     size_t i=0;
     while(i<bc.size()){
         uint8_t op = bc[i++];
@@ -116,11 +122,24 @@ static void execute_bc(const std::vector<uint8_t>& bc){
             WriteFile(hOut, s, (DWORD)n, &w, nullptr);
             WriteFile(hOut, "\r\n", 2, &w, nullptr);
             i += (size_t)n;
+        }else if(op==(uint8_t)OP_PRINT_INT){
+            if(i>=bc.size()) break;
+            uint8_t id = bc[i++];
+            char buf[32]; sprintf(buf, "%lld\r\n", (long long)vars[id]);
+            WriteFile(hOut, buf, (DWORD)strlen(buf), &w, nullptr);
+        }else if(op==(uint8_t)OP_SET_I64){
+            if(i+9>bc.size()) break;
+            uint8_t id = bc[i++];
+            int64_t v=0; for(int k=0;k<8;k++) v|=((int64_t)bc[i++])<<(8*k);
+            vars[id] = v;
+        }else if(op==(uint8_t)OP_END){
+            break;
         }else break;
     }
     ExitProcess(0); // 直接結束，不回 CLI
 #else
     // POSIX 環境也可用 fwrite/puts 版本（如需）
+    std::vector<int64_t> vars(256, 0); // 變數槽位
     size_t i=0;
     while(i<bc.size()){
         uint8_t op = bc[i++];
@@ -130,6 +149,17 @@ static void execute_bc(const std::vector<uint8_t>& bc){
             if(i+n>bc.size()) break;
             fwrite(&bc[i],1,(size_t)n,stdout); fputc('\n',stdout);
             i += (size_t)n;
+        }else if(op==(uint8_t)OP_PRINT_INT){
+            if(i>=bc.size()) break;
+            uint8_t id = bc[i++];
+            fprintf(stdout, "%lld\n", (long long)vars[id]);
+        }else if(op==(uint8_t)OP_SET_I64){
+            if(i+9>bc.size()) break;
+            uint8_t id = bc[i++];
+            int64_t v=0; for(int k=0;k<8;k++) v|=((int64_t)bc[i++])<<(8*k);
+            vars[id] = v;
+        }else if(op==(uint8_t)OP_END){
+            break;
         }else break;
     }
     std::exit(0);
@@ -137,6 +167,27 @@ static void execute_bc(const std::vector<uint8_t>& bc){
 }
 
 // ---- 反組譯位元碼為可讀格式 ----
+
+// 只轉義必要的字元；保留原 UTF-8
+static std::string quote_utf8_minimal(const std::string& s) {
+    std::string out; out.reserve(s.size()+2);
+    out.push_back('\"');
+    for (unsigned char c : s) {
+        switch (c) {
+            case '\\': out += "\\\\"; break;
+            case '\"': out += "\\\""; break;
+            case '\n': out += "\\n";  break;
+            case '\r': out += "\\r";  break;
+            case '\t': out += "\\t";  break;
+            default:
+                // 非 ASCII 直接原樣輸出（UTF-8）
+                out.push_back((char)c);
+        }
+    }
+    out.push_back('\"');
+    return out;
+}
+
 static void disassemble_bc(const std::vector<uint8_t>& bc, std::ostream& out = std::cout) {
     out << "Bytecode disassembly:" << std::endl;
     size_t i = 0;
@@ -155,20 +206,34 @@ static void disassemble_bc(const std::vector<uint8_t>& bc, std::ostream& out = s
                     out << "PRINT (incomplete string)" << std::endl;
                     return;
                 }
-                out << "PRINT \"";
-                for (size_t j = 0; j < n; j++) {
-                    char c = (char)bc[i + j];
-                    if (c == '\n') out << "\\n";
-                    else if (c == '\r') out << "\\r";
-                    else if (c == '\t') out << "\\t";
-                    else if (c == '"') out << "\\\"";
-                    else if (c == '\\') out << "\\\\";
-                    else if (c >= 32 && c <= 126) out << c;
-                    else out << "\\x" << std::setw(2) << std::setfill('0') << std::hex << (int)(unsigned char)c << std::dec;
-                }
-                out << "\"" << std::endl;
+                std::string s((const char*)&bc[i], (size_t)n);
+                out << "PRINT " << quote_utf8_minimal(s) << std::endl;
                 i += (size_t)n;
                 break;
+            }
+            case (uint8_t)OP_PRINT_INT: {
+                if (i >= bc.size()) {
+                    out << "PRINT_INT (incomplete)" << std::endl;
+                    return;
+                }
+                uint8_t id = bc[i++];
+                out << "PRINT_INT v" << (int)id << std::endl;
+                break;
+            }
+            case (uint8_t)OP_SET_I64: {
+                if (i + 9 > bc.size()) {
+                    out << "SET_I64 (incomplete)" << std::endl;
+                    return;
+                }
+                uint8_t id = bc[i++];
+                int64_t v = 0;
+                for (int k = 0; k < 8; k++) v |= ((int64_t)bc[i++]) << (8 * k);
+                out << "SET_I64 v" << (int)id << " = " << (long long)v << std::endl;
+                break;
+            }
+            case (uint8_t)OP_END: {
+                out << "END" << std::endl;
+                return;
             }
             default:
                 out << "UNKNOWN_OP(0x" << std::setw(2) << std::setfill('0') << std::hex << (int)op << std::dec << ")" << std::endl;
@@ -332,27 +397,173 @@ static std::vector<uint8_t> translate_js_to_bc(const std::string& js){
 }
 
 // ---- 翻譯器：中文自然語言 .zh → 位元碼（PoC：輸出字串 "…" / 其他原樣）----
-static std::vector<uint8_t> translate_zh_to_bc(const std::string& zh){
-    std::vector<uint8_t> bc; std::istringstream ss(zh); std::string line;
+
+// 1) UTF-8 BOM 去除 + 全形引號/空白正規化 + 繁簡對應
+static inline void strip_bom_utf8(std::string& s){
+    if(s.size()>=3 && (uint8_t)s[0]==0xEF && (uint8_t)s[1]==0xBB && (uint8_t)s[2]==0xBF) s.erase(0,3);
+}
+
+static inline void replace_all(std::string& s, const std::string& a, const std::string& b){
+    if(a.empty()) return;
+    size_t pos = 0;
+    while((pos = s.find(a, pos)) != std::string::npos){
+        s.replace(pos, a.size(), b);
+        pos += b.size();
+    }
+}
+
+// 繁體優先：只做標點/空白正規化
+static std::string normalize_traditional_line(const std::string& in){
+    std::string s = in;
+    replace_all(s, u8"\u3000", " "); // 全形空白
+    replace_all(s, u8"「", "\"");
+    replace_all(s, u8"」", "\"");
+    replace_all(s, u8"『", "\"");
+    replace_all(s, u8"』", "\"");
+    return s; // 不要做任何簡→繁
+}
+
+// 若出現簡體關鍵詞，直接報錯
+static bool line_contains_simplified_keywords(const std::string& s, std::string* hit=nullptr){
+    static const char* simp[] = {
+        u8"输出", u8"打印", u8"字符串", u8"整数",
+        u8"设为", u8"等于", u8"不等于", u8"大于", u8"小于",
+        u8"大于等于", u8"小于等于", u8"否则"
+    };
+    for(const char* k : simp){
+        if(s.find(k) != std::string::npos){ if(hit) *hit = k; return true; }
+    }
+    return false;
+}
+
+// 2) 關鍵詞表（避免歧義：賦值用「設為」，相等用「等於」）
+struct ZhKeywords {
+    // 賦值/比較
+    const char* assign_kw = "設為";  // x 設為 3
+    const char* eq_kw     = "等於";  // x 等於 3 → ==
+    // I/O
+    const char* out_kw    = "輸出";  // 輸出 "..."
+    const char* str_kw    = "字串";
+    const char* int_kw    = "整數";
+    // 控制流
+    const char* if_kw     = "如果";
+    const char* else_kw   = "否則";
+    const char* while_kw  = "當";
+    const char* end_kw    = "結束";
+} ZH;
+
+// 3) 簡單詞法：切成 tokens（空白/引號 aware）
+static std::vector<std::string> zh_tokenize(const std::string& line){
+    std::vector<std::string> t; std::string cur; bool inq=false;
+    for(size_t i=0;i<line.size();++i){
+        char c=line[i];
+        if(c=='"'){ cur.push_back(c); inq=!inq; continue; }
+        if(inq){ cur.push_back(c); continue; }
+        if(c==' ' || c=='\t'){ if(!cur.empty()){ t.push_back(cur); cur.clear(); } }
+        else cur.push_back(c);
+    }
+    if(!cur.empty()) t.push_back(cur);
+    return t;
+}
+
+// 4) 中文→IR（行級；最小子集）
+static void emit_u64(std::vector<uint8_t>& bc, uint64_t v){ for(int i=0;i<8;i++) bc.push_back((uint8_t)((v>>(8*i))&0xFF)); }
+static void emit_str(std::vector<uint8_t>& bc, const std::string& s){
+    bc.push_back((uint8_t)OP_PRINT); emit_u64(bc, (uint64_t)s.size()); bc.insert(bc.end(), s.begin(), s.end());
+}
+
+// 變數槽位分配（簡單 map：名稱→uint8_t）
+static uint8_t slot_of(std::unordered_map<std::string,uint8_t>& tab, const std::string& name){
+    auto it=tab.find(name); if(it!=tab.end()) return it->second;
+    uint8_t id=(uint8_t)tab.size(); tab[name]=id; return id;
+}
+
+static std::vector<uint8_t> translate_zh_to_bc(const std::string& srcRaw){
+    std::string src = srcRaw; strip_bom_utf8(src);
+    std::vector<uint8_t> bc; std::istringstream ss(src); std::string line;
+    std::unordered_map<std::string,uint8_t> vars;
+    std::vector<size_t> if_patch; // 之後可用於 JZ/JMP 回填（目前先不實作控制流）
+
     auto ltrim=[](std::string& s){ size_t i=0; while(i<s.size() && (unsigned char)s[i]<=32) ++i; s.erase(0,i); };
     auto rtrim=[](std::string& s){ while(!s.empty() && (unsigned char)s.back()<=32) s.pop_back(); };
+
+    size_t lineno = 0;
     while(std::getline(ss,line)){
-        std::string raw=line; ltrim(line); rtrim(line);
-        if(line.rfind("輸出字串(",0)==0){
-            size_t start = line.find('(');
-            size_t end = line.find_last_of(')');
-            if(start != std::string::npos && end != std::string::npos && end > start){
-                std::string content = line.substr(start + 1, end - start - 1);
-                // 支援 「…」 或 "…"
-                for(char& c: content){ if(c=='『'||c=='「') c='"'; if(c=='』'||c=='」') c='"'; }
-                if(content.size()>=2 && content.front()=='"' && content.back()=='"'){
-                    auto v=enc_print(content.substr(1,content.size()-2)); bc.insert(bc.end(), v.begin(), v.end()); continue;
-                }
-            }
+        ++lineno;
+        std::string raw=line;
+        line = normalize_traditional_line(line);
+        ltrim(line); rtrim(line); if(line.empty()) continue;
+
+        // 簡體關鍵詞檢查（硬錯）
+        std::string hit;
+        if(line_contains_simplified_keywords(line, &hit)){
+            std::fprintf(stderr,
+                "[.zh] 不支援簡體關鍵詞（第%zu行）：偵測到「%s」；請改用繁體，如：輸出/字串/整數/設為/否則/等於\n",
+                lineno, hit.c_str());
+            std::exit(2);
         }
-        auto v=enc_print(std::string("[未解析] ")+raw); bc.insert(bc.end(), v.begin(), v.end());
+
+        auto tok = zh_tokenize(line);
+        if(tok.empty()) continue;
+
+        // 輸出 字串 "..."
+        if(tok.size()>=3 && tok[0]==ZH.out_kw && tok[1]==ZH.str_kw && tok[2].size()>=2 && tok[2].front()=='"' && tok[2].back()=='"'){
+            emit_str(bc, tok[2].substr(1, tok[2].size()-2));
+            continue;
+        }
+        // 定義 整數 x 設為 3
+        if(tok.size()>=5 && (tok[0]=="定義"||tok[0]=="宣告") && tok[1]==ZH.int_kw && tok[3]==ZH.assign_kw){
+            uint8_t id = slot_of(vars, tok[2]);
+            bc.push_back((uint8_t)OP_SET_I64); bc.push_back(id);
+            int64_t v = std::stoll(tok[4]); emit_u64(bc, (uint64_t)v);
+            continue;
+        }
+        // x 設為 3
+        if(tok.size()>=3 && tok[1]==ZH.assign_kw){
+            uint8_t id = slot_of(vars, tok[0]);
+            bc.push_back((uint8_t)OP_SET_I64); bc.push_back(id);
+            int64_t v = std::stoll(tok[2]); emit_u64(bc, (uint64_t)v);
+            continue;
+        }
+        // 輸出 整數 x
+        if(tok.size()>=3 && tok[0]==ZH.out_kw && tok[1]==ZH.int_kw){
+            uint8_t id = slot_of(vars, tok[2]);
+            bc.push_back((uint8_t)OP_PRINT_INT); bc.push_back(id);
+            continue;
+        }
+
+        // 其他：原樣回饋
+        emit_str(bc, std::string("[未解析] ")+raw);
     }
+    bc.push_back((uint8_t)OP_END);
     return bc;
+}
+
+// （可選）IR → C++（純為「要給人看」的產物）
+static std::string emit_cpp_from_bc(const std::vector<uint8_t>& bc){
+    std::ostringstream out;
+    out << "#include <cstdio>\n#include <cstdint>\nint main(){\n";
+    size_t i=0; while(i<bc.size()){
+        uint8_t op = bc[i++];
+        if(op==(uint8_t)OP_PRINT){
+            uint64_t n=0; for(int k=0;k<8;k++) n|=((uint64_t)bc[i++])<<(8*k);
+            std::string s((const char*)&bc[i], (size_t)n); i+=(size_t)n;
+            out << "  std::puts(\"";
+            for(char c: s){ if(c=='\\' || c=='"') out<<'\\'; out<<c; }
+            out << "\");\n";
+        } else if(op==(uint8_t)OP_PRINT_INT){
+            uint8_t id = bc[i++]; out << "  std::printf(\"%lld\\n\", (long long)v"<<(int)id<<");\n";
+        } else if(op==(uint8_t)OP_SET_I64){
+            uint8_t id = bc[i++]; int64_t v=0; for(int k=0;k<8;k++) v|=((int64_t)bc[i++])<<(8*k);
+            out << "  long long v"<<(int)id<<" = "<<(long long)v<<";\n";
+        } else if(op==(uint8_t)OP_END){
+            break;
+        } else {
+            out << "  // OP_"<<(int)op<<"\n"; break;
+        }
+    }
+    out << "  return 0;\n}\n";
+    return out.str();
 }
 
 // ---- 翻譯器：Python → 位元碼（PoC：print("…") / 其他忽略）----
@@ -2039,6 +2250,11 @@ int clean_project(bool verbose);
 bool matches_pattern(const std::string& filename, const std::string& pattern);
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
     初始化中文環境();
 
     // 在 main() 進入點最前面加：
@@ -2049,7 +2265,7 @@ int main(int argc, char** argv) {
     // Check for --help first
     if (argc >= 2 && std::string(argv[1]) == "--help") {
         std::cout << "zhcl - Universal Compiler & Build System Replacement v1.0" << std::endl;
-        std::cout << "One CPP file to compile: C, C++, Java, Python, Go, Rust, JS/TS, and more" << std::endl;
+        std::cout << "One CPP file to compile: C, C++, Java, Python, Go, JavaScript, Chinese, and more" << std::endl;
         std::cout << std::endl;
         std::cout << "Usage: zhcl <command> [options]" << std::endl;
         std::cout << std::endl;
@@ -2083,7 +2299,7 @@ int main(int argc, char** argv) {
         std::cout << "  zhcl selfhost verify hello.exe                   # Verify exe integrity" << std::endl;
         std::cout << "  set ZHCL_SELFHOST_QUIET=1 && hello.exe          # Run exe quietly" << std::endl;
         std::cout << std::endl;
-        std::cout << "Supported: C/C++, Java, Python, Go, Rust, JavaScript, TypeScript, Chinese (.zh)" << std::endl;
+        std::cout << "Supported: C/C++, Java, Python, Go, JavaScript, Chinese (.zh - 繁體優先)" << std::endl;
         std::cout << "Replaces: cl, gcc, g++, javac, cmake, make, and traditional build systems" << std::endl;
         return 0;
     }
@@ -2095,7 +2311,7 @@ int main(int argc, char** argv) {
 
     if (argc < 2) {
         std::cout << "zhcl - Universal Compiler & Build System Replacement v1.0" << std::endl;
-        std::cout << "One CPP file to compile: C, C++, Java, Python, Go, Rust, JS/TS, and more" << std::endl;
+        std::cout << "One CPP file to compile: C, C++, Java, Python, Go, JavaScript, Chinese, and more" << std::endl;
         std::cout << std::endl;
         std::cout << "Usage: zhcl <command> [options]" << std::endl;
         std::cout << std::endl;
@@ -2114,7 +2330,7 @@ int main(int argc, char** argv) {
         std::cout << "  --selfhost      Generate self-contained executable (compile cmd)" << std::endl;
         std::cout << "  --help          Show help" << std::endl;
         std::cout << std::endl;
-        std::cout << "Supported: C/C++, Java, Python, Go, Rust, JavaScript, TypeScript, Chinese (.zh)" << std::endl;
+        std::cout << "Supported: C/C++, Java, Python, Go, JavaScript, Chinese (.zh)" << std::endl;
         std::cout << "Replaces: cl, gcc, g++, javac, cmake, make, and traditional build systems" << std::endl;
         return 0;
     }
@@ -2191,8 +2407,13 @@ int main(int argc, char** argv) {
         // ... 判斷輸入副檔名：
         std::filesystem::path input_path(file);
         auto ext = input_path.extension().string();
-        if (opt_selfhost && (ext == ".js" || ext == ".zh")) {
-            std::string lang = (ext == ".js") ? "js" : "zh";
+        if (opt_selfhost && (ext == ".js" || ext == ".py" || ext == ".go" || ext == ".java" || ext == ".zh")) {
+            std::string lang;
+            if (ext == ".js") lang = "js";
+            else if (ext == ".py") lang = "py";
+            else if (ext == ".go") lang = "go";
+            else if (ext == ".java") lang = "java";
+            else if (ext == ".zh") lang = "zh";
             std::filesystem::path output_exe = output.empty() ? 
                 input_path.parent_path() / (input_path.stem().string() + ".exe") : 
                 std::filesystem::path(output);
@@ -2271,7 +2492,7 @@ int list_compilers(const CompilerRegistry& registry, bool verbose) {
     std::cout << "  內建 C/C++ (via MSVC/gcc detection)" << std::endl;
     std::cout << "  內建 Java (bytecode generation)" << std::endl;
     std::cout << "  內建 Go (translation to C++)" << std::endl;
-    std::cout << "  內建 Chinese (.zh files)" << std::endl;
+    std::cout << "  內建 Chinese (.zh files) - 繁體優先：輸出/字串/整數/設為/如果/否則/當/結束" << std::endl;
     std::cout << "  內建 Python (translation to C++)" << std::endl;
     std::cout << "  內建 JavaScript (translation to C++)" << std::endl;
 
