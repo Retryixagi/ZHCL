@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iomanip>
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -71,6 +72,10 @@ struct Trailer {
 
 enum Op : uint8_t { OP_PRINT = 1 };
 
+// ---- 前向聲明 ----
+static void disassemble_bc(const std::vector<uint8_t>& bc, std::ostream& out);
+static int handle_selfhost_explain(int argc, char** argv);
+
 // ---- 小工具 ----
 static std::string read_all(const std::filesystem::path& p){
     std::ifstream f(p, std::ios::binary);
@@ -131,6 +136,48 @@ static void execute_bc(const std::vector<uint8_t>& bc){
 #endif
 }
 
+// ---- 反組譯位元碼為可讀格式 ----
+static void disassemble_bc(const std::vector<uint8_t>& bc, std::ostream& out = std::cout) {
+    out << "Bytecode disassembly:" << std::endl;
+    size_t i = 0;
+    while (i < bc.size()) {
+        out << std::setw(4) << std::setfill('0') << i << ": ";
+        uint8_t op = bc[i++];
+        switch (op) {
+            case (uint8_t)OP_PRINT: {
+                if (i + 8 > bc.size()) {
+                    out << "PRINT (incomplete)" << std::endl;
+                    return;
+                }
+                uint64_t n = 0;
+                for (int k = 0; k < 8; k++) n |= ((uint64_t)bc[i++]) << (8 * k);
+                if (i + n > bc.size()) {
+                    out << "PRINT (incomplete string)" << std::endl;
+                    return;
+                }
+                out << "PRINT \"";
+                for (size_t j = 0; j < n; j++) {
+                    char c = (char)bc[i + j];
+                    if (c == '\n') out << "\\n";
+                    else if (c == '\r') out << "\\r";
+                    else if (c == '\t') out << "\\t";
+                    else if (c == '"') out << "\\\"";
+                    else if (c == '\\') out << "\\\\";
+                    else if (c >= 32 && c <= 126) out << c;
+                    else out << "\\x" << std::setw(2) << std::setfill('0') << std::hex << (int)(unsigned char)c << std::dec;
+                }
+                out << "\"" << std::endl;
+                i += (size_t)n;
+                break;
+            }
+            default:
+                out << "UNKNOWN_OP(0x" << std::setw(2) << std::setfill('0') << std::hex << (int)op << std::dec << ")" << std::endl;
+                return;
+        }
+    }
+    out << "End of bytecode" << std::endl;
+}
+
 // ---- New: 讀取 + 驗證 trailer，回傳 payload 與資訊 ----
 struct PayloadInfo {
     std::vector<uint8_t> data;
@@ -169,9 +216,41 @@ static bool maybe_run_embedded_payload(){
     auto R = read_payload_from_file(self);
     if(!R.ok) return false;
 
-    // 自證訊息（可以用環境變數關閉，例如 ZHCL_SELFHOST_QUIET=1）
-    const char* q = std::getenv("ZHCL_SELFHOST_QUIET");
-    if(!q || q[0] != '1'){
+    // 讀到 R 之後、印橫幅之前加入：
+    bool show_proof = false;
+
+    // 1) 命令列參數觸發（支援 --prove / --proof / --selfhost-info）
+    #ifdef _WIN32
+    {
+        std::wstring cmd = GetCommandLineW();
+        std::wstring lower = cmd;
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::towlower);
+        if (lower.find(L"--prove") != std::wstring::npos ||
+            lower.find(L"--proof") != std::wstring::npos ||
+            lower.find(L"--selfhost-info") != std::wstring::npos) {
+            show_proof = true;
+        }
+    }
+    #else
+    {
+        // 非 Windows 可用 argc/argv 或 /proc/self/cmdline（依你的現有架構擇一）
+        // 下面是範例：若你在這個早期路徑拿不到 argv，可以先略過（僅用環境變數啟用）
+    }
+    #endif
+
+    // 2) 環境變數觸發（CI/腳本用）
+    if (const char* s = std::getenv("ZHCL_SELFHOST_SHOW")) {
+        if (s[0]=='1' || s[0]=='y' || s[0]=='Y' || s[0]=='t' || s[0]=='T') {
+            show_proof = true;
+        }
+    }
+
+    // 3) 若你有在 Trailer.flags 設過「SHF_SILENT_BANNER」，此處可完全忽略它
+    //    因為我們現在預設就是靜默，只有顯式要求才顯示。
+
+    // —— 原本這裡是直接 printf 橫幅 ——
+    //    改成：只有 show_proof 才印
+    if (show_proof) {
         std::printf("[selfhost] payload v%u %s size=%llu crc=%s\n",
             R.tr.version,
             (R.ok?"found":"missing"),
@@ -191,6 +270,7 @@ static bool maybe_run_embedded_payload(){
 // ---- 翻譯器：JS → 位元碼（PoC：console.log("…") / 其他忽略）----
 static std::vector<uint8_t> translate_js_to_bc(const std::string& js){
     std::vector<uint8_t> bc; std::istringstream ss(js); std::string line;
+    // 處理按行分割的輸入
     while(std::getline(ss,line)){
         // 去除前後空白
         size_t start = line.find_first_not_of(" \t");
@@ -216,6 +296,37 @@ static std::vector<uint8_t> translate_js_to_bc(const std::string& js){
             // TODO: 處理變數連接如 "x = " + x
         }
         // 忽略其他行（變數聲明、函數等）
+    }
+    // 如果沒有行分隔符，嘗試處理整個字符串
+    if(bc.empty()){
+        std::string content = js;
+        // 去除前後空白
+        size_t start = content.find_first_not_of(" \t\r\n");
+        if(start != std::string::npos){
+            content = content.substr(start);
+            size_t end = content.find_last_not_of(" \t\r\n");
+            if(end != std::string::npos){
+                content = content.substr(0, end + 1);
+            }
+        }
+        
+        auto pos = content.find("console.log");
+        if(pos != std::string::npos){
+            // 找到 console.log( 之後的內容
+            size_t paren_start = content.find('(', pos);
+            if(paren_start != std::string::npos){
+                size_t paren_end = content.find(')', paren_start);
+                if(paren_end != std::string::npos){
+                    std::string arg = content.substr(paren_start + 1, paren_end - paren_start - 1);
+                    // 簡單處理：如果是以引號開始和結束，提取內容
+                    if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
+                        std::string text = arg.substr(1, arg.size() - 2);
+                        auto v = enc_print(text);
+                        bc.insert(bc.end(), v.begin(), v.end());
+                    }
+                }
+            }
+        }
     }
     return bc;
 }
@@ -402,6 +513,29 @@ static int verify_exe(const std::filesystem::path& exe){
     std::printf("  offset  : %llu\n", (unsigned long long)R.tr.payload_offset);
     std::printf("  crc32   : %08X (%s)\n", R.tr.crc32, R.crc_ok?"OK":"BAD");
     return R.crc_ok? 0 : 3;
+}
+
+// ---- handle selfhost explain command ----
+static int handle_selfhost_explain(int argc, char** argv) {
+    if (argc < 4) {
+        std::puts("Usage:\n  zhcl_universal selfhost explain <input.(js|py|go|java|zh)>");
+        return 2;
+    }
+    std::filesystem::path in = argv[3];
+    std::string src = read_all(in); // 同命名空間內可直接用
+    std::vector<uint8_t> bc;
+    auto ext = in.extension().string();
+    if (ext == ".js")      bc = translate_js_to_bc(src);
+    else if (ext == ".py") bc = translate_py_to_bc(src);
+    else if (ext == ".go") bc = translate_go_to_bc(src);
+    else if (ext == ".java") bc = translate_java_to_bc(src);
+    else if (ext == ".zh") bc = translate_zh_to_bc(src);
+    else {
+        std::fprintf(stderr, "[selfhost] unsupported input: %s\n", ext.c_str());
+        return 2;
+    }
+    disassemble_bc(bc);
+    return 0;
 }
 
 } // namespace selfhost
@@ -1912,6 +2046,48 @@ int main(int argc, char** argv) {
         return 0; // 若檔尾有 payload，已執行並 ExitProcess()；保險起見 return
     }
 
+    // Check for --help first
+    if (argc >= 2 && std::string(argv[1]) == "--help") {
+        std::cout << "zhcl - Universal Compiler & Build System Replacement v1.0" << std::endl;
+        std::cout << "One CPP file to compile: C, C++, Java, Python, Go, Rust, JS/TS, and more" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Usage: zhcl <command> [options]" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Commands:" << std::endl;
+        std::cout << "  <file>          Compile single file" << std::endl;
+        std::cout << "  build           Build entire project" << std::endl;
+        std::cout << "  run <file>      Compile and run file" << std::endl;
+        std::cout << "  init            Initialize new project" << std::endl;
+        std::cout << "  list            List available compilers" << std::endl;
+        std::cout << "  clean           Clean build artifacts" << std::endl;
+        std::cout << "  selfhost        Self-contained executable generation" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Selfhost Commands:" << std::endl;
+        std::cout << "  selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>    Pack source into self-contained exe" << std::endl;
+        std::cout << "  selfhost verify <exe>                                      Verify exe integrity" << std::endl;
+        std::cout << "  selfhost explain <input.(js|py|go|java|zh)>                Show bytecode disassembly" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Options:" << std::endl;
+        std::cout << "  -o <output>     Output file" << std::endl;
+        std::cout << "  --verbose       Verbose output" << std::endl;
+        std::cout << "  --selfhost      Generate self-contained executable (compile cmd)" << std::endl;
+        std::cout << "  --help          Show help" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Environment Variables:" << std::endl;
+        std::cout << "  ZHCL_SELFHOST_QUIET=1    Suppress selfhost banner when running packed executables" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Examples:" << std::endl;
+        std::cout << "  zhcl hello.c                                    # Compile C file" << std::endl;
+        std::cout << "  zhcl hello.java -o hello.class                  # Compile Java file" << std::endl;
+        std::cout << "  zhcl selfhost pack hello.js -o hello.exe        # Create self-contained exe" << std::endl;
+        std::cout << "  zhcl selfhost verify hello.exe                   # Verify exe integrity" << std::endl;
+        std::cout << "  set ZHCL_SELFHOST_QUIET=1 && hello.exe          # Run exe quietly" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Supported: C/C++, Java, Python, Go, Rust, JavaScript, TypeScript, Chinese (.zh)" << std::endl;
+        std::cout << "Replaces: cl, gcc, g++, javac, cmake, make, and traditional build systems" << std::endl;
+        return 0;
+    }
+
     CompilerRegistry registry;
     registry.detect_compilers();
 
@@ -1968,8 +2144,12 @@ int main(int argc, char** argv) {
         return clean_project(verbose);
     } else if (command == "selfhost") {
         if (argc < 3) {
-            std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|zh)> -o <output.exe>\n"
-                      "  zhcl_universal selfhost verify <exe>");
+            std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>\n"
+                      "  zhcl_universal selfhost verify <exe>\n"
+                      "  zhcl_universal selfhost explain <input.(js|py|go|java|zh)>\n"
+                      "\n"
+                      "Note: Generated executables run silently by default. Use --prove/--proof/--selfhost-info\n"
+                      "      or set ZHCL_SELFHOST_SHOW=1 to display selfhost verification details.");
             return 1;
         }
         std::string sub = argv[2];
@@ -1993,6 +2173,8 @@ int main(int argc, char** argv) {
         } else if (sub == "verify") {
             if (argc < 4) { std::puts("Usage:\n  zhcl_universal selfhost verify <exe>"); return 2; }
             return selfhost::verify_exe(argv[3]); // <== New
+        } else if (sub == "explain") {
+            return selfhost::handle_selfhost_explain(argc, argv);
         }
         std::fprintf(stderr, "Unknown subcommand: selfhost %s\n", sub.c_str());
         return 1;
