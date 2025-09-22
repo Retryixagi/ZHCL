@@ -1,13 +1,21 @@
-// zhcl.cpp -- Universal Compiler & Build System Replacement
+﻿// zhcl.cpp -- Universal Compiler & Build System Replacement
 // One CPP file to rule them all: C, C++, Java, Python, Go, Rust, JS/TS, and more
 // Replaces cl, gcc, g++, javac, cmake, make, and build systems
 
-#include "../include/chinese.h"
+#include <string>
+#include <vector>
+#include <cstdint>
+#include "../include/frontend.h"
+#include "../include/fe_clite.h"
+#include "../include/fe_cpplite.h"
+#include "../include/fe_jslite.h"
+#include "../include/fe_zh.h"
+#include "../include/zh_frontend.h"
+#include "../include/chinese_new.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <string>
-#include <vector>
+#include <iterator>
 #include <iomanip>
 #include <algorithm>
 #include <cctype>
@@ -23,16 +31,19 @@
 #include <mutex>
 #include <atomic>
 #include <unordered_map>
-
-// Use explicit std:: prefix instead of using namespace std
-namespace fs = std::filesystem;
-using namespace std;
-#include <thread>
-#include <mutex>
-#include <atomic>
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+
+// Use explicit std:: prefix instead of using namespace std
+namespace fs = std::filesystem;
+
+// Forward declarations
+extern "C" int translate_zh_to_cpp(const std::string& input_path, const std::string& output_cpp_path, bool verbose);
+extern "C" void register_fe_clite();
+extern "C" void register_fe_cpplite();
+extern "C" void register_fe_jslite();
+extern "C" void register_fe_zh();
 
 // ======= SelfHost: payload trailer + runtime + packer (no external compilers) =======
 #ifdef _WIN32
@@ -44,7 +55,7 @@ using namespace std;
 
 namespace selfhost {
 
-// ---- New: CRC32 (簡單、足夠) ----
+// ---- New: CRC32 (蝪∪?雲憭? ----
 static uint32_t crc32(const uint8_t* data, size_t len){
     uint32_t c = 0xFFFFFFFFu;
     for(size_t i=0;i<len;i++){
@@ -57,19 +68,20 @@ static uint32_t crc32(const uint8_t* data, size_t len){
     return ~c;
 }
 
-static const uint64_t SH_MAGIC = 0x305941505A48435Full; // 同原本
-static const uint32_t SH_VERSION = 1;                   // <== New: 版本
+static const uint64_t SH_MAGIC = 0x305941505A48435Full; // ????
+static const uint32_t SH_VERSION = 1;                   // <== New: ?
 
 #pragma pack(push,1)
 struct Trailer {
     uint64_t magic;          // SH_MAGIC
-    uint64_t payload_size;   // 位元碼長度
-    uint64_t payload_offset; // 位元碼起點
+    uint64_t payload_size;   // 雿?蝣潮摨?
+    uint64_t payload_offset; // 雿?蝣潸絲暺?
     uint32_t version;        // <== New
-    uint32_t crc32;          // <== New (對 payload 計算)
+    uint32_t crc32;          // <== New (撠?payload 閮?)
 };
 #pragma pack(pop)
 
+// Move Op enum to global scope for visibility
 enum Op : uint8_t {
     OP_PRINT = 1,
     OP_PRINT_INT,
@@ -77,20 +89,51 @@ enum Op : uint8_t {
     OP_END
 };
 
-// ---- 前向聲明 ----
+// === glue: .zh -> C++ using the new ZhFrontend (no Python needed) ===
+static inline void emit_u64(std::vector<uint8_t>& bc, uint64_t v){
+    for(int i=0;i<8;i++) bc.push_back((uint8_t)((v>>(8*i))&0xFF)); // little-endian
+}
+static inline void emit_i64(std::vector<uint8_t>& bc, int64_t v){
+    emit_u64(bc, (uint64_t)v);
+}
+
+static void emit_PRINT_adapter(std::vector<uint8_t>& bc, const std::string& s){
+    bc.push_back((uint8_t)OP_PRINT);
+    emit_u64(bc, (uint64_t)s.size());
+    bc.insert(bc.end(), s.begin(), s.end());
+}
+static void emit_SET_I64_adapter(std::vector<uint8_t>& bc, uint8_t slot, long long v){
+    bc.push_back((uint8_t)OP_SET_I64);
+    bc.push_back(slot);
+    emit_i64(bc, v);
+}
+static void emit_PRINT_INT_adapter(std::vector<uint8_t>& bc, uint8_t slot){
+    bc.push_back((uint8_t)OP_PRINT_INT);
+    bc.push_back(slot);
+}
+static void emit_END_adapter(std::vector<uint8_t>& bc){
+    bc.push_back((uint8_t)OP_END);
+}
+
+// === glue: .zh -> C++ using the new ZhFrontend (no Python needed) ===
+
+// 憒?瑼???恐??鋆?嚗歇摮撠梁??
+extern std::string emit_cpp_from_bc(const std::vector<uint8_t>& bc);
+
+// ---- ???脫? ----
 static void disassemble_bc(const std::vector<uint8_t>& bc, std::ostream& out);
 static int handle_selfhost_explain(int argc, char** argv);
 
-// ---- 小工具 ----
-static std::string read_all(const std::filesystem::path& p){
+// ---- 撠極??----
+static std::string read_all(const fs::path& p){
     std::ifstream f(p, std::ios::binary);
     std::ostringstream ss; ss<<f.rdbuf(); return ss.str();
 }
-static bool write_all(const std::filesystem::path& p, const std::string& s){
-    std::filesystem::create_directories(p.parent_path()); std::ofstream f(p, std::ios::binary);
+static bool write_all(const fs::path& p, const std::string& s){
+    fs::create_directories(p.parent_path()); std::ofstream f(p, std::ios::binary);
     f.write(s.data(), (std::streamsize)s.size()); return (bool)f;
 }
-static bool file_copy(const std::filesystem::path& src, const std::filesystem::path& dst){
+static bool file_copy(const fs::path& src, const fs::path& dst){
     std::ifstream in(src, std::ios::binary); if(!in) return false;
     std::ofstream out(dst, std::ios::binary); if(!out) return false;
     out<<in.rdbuf(); return (bool)out;
@@ -103,14 +146,14 @@ static std::vector<uint8_t> enc_print(const std::string& s){
     return out;
 }
 
-// ---- 直譯器（執行位元碼）----
+// ---- ?渲陌?剁??瑁?雿?蝣潘?----
 static void execute_bc(const std::vector<uint8_t>& bc){
 #ifdef _WIN32
-    // 設置控制台代碼頁為 UTF-8 以正確顯示中文
+    // 閮剔蔭?批?唬誨蝣潮???UTF-8 隞交迤蝣粹＊蝷箔葉??
     SetConsoleOutputCP(65001);
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD w=0;
-    std::vector<int64_t> vars(256, 0); // 變數槽位
+    std::vector<int64_t> vars(256, 0); // 霈瑽賭?
     size_t i=0;
     while(i<bc.size()){
         uint8_t op = bc[i++];
@@ -136,10 +179,10 @@ static void execute_bc(const std::vector<uint8_t>& bc){
             break;
         }else break;
     }
-    ExitProcess(0); // 直接結束，不回 CLI
+    ExitProcess(0); // ?湔蝯?嚗???CLI
 #else
-    // POSIX 環境也可用 fwrite/puts 版本（如需）
-    std::vector<int64_t> vars(256, 0); // 變數槽位
+    // POSIX ?啣?銋??fwrite/puts ?嚗??嚗?
+    std::vector<int64_t> vars(256, 0); // 霈瑽賭?
     size_t i=0;
     while(i<bc.size()){
         uint8_t op = bc[i++];
@@ -166,9 +209,9 @@ static void execute_bc(const std::vector<uint8_t>& bc){
 #endif
 }
 
-// ---- 反組譯位元碼為可讀格式 ----
+// ---- ??霅臭??Ⅳ?箏霈?澆? ----
 
-// 只轉義必要的字元；保留原 UTF-8
+// ?芾?蝢拙?閬?摮?嚗??? UTF-8
 static std::string quote_utf8_minimal(const std::string& s) {
     std::string out; out.reserve(s.size()+2);
     out.push_back('\"');
@@ -180,7 +223,7 @@ static std::string quote_utf8_minimal(const std::string& s) {
             case '\r': out += "\\r";  break;
             case '\t': out += "\\t";  break;
             default:
-                // 非 ASCII 直接原樣輸出（UTF-8）
+                // ??ASCII ?湔?見頛詨嚗TF-8嚗?
                 out.push_back((char)c);
         }
     }
@@ -243,14 +286,14 @@ static void disassemble_bc(const std::vector<uint8_t>& bc, std::ostream& out = s
     out << "End of bytecode" << std::endl;
 }
 
-// ---- New: 讀取 + 驗證 trailer，回傳 payload 與資訊 ----
+// ---- New: 霈??+ 撽? trailer嚗???payload ??閮?----
 struct PayloadInfo {
     std::vector<uint8_t> data;
     Trailer tr{};
     bool ok=false;
     bool crc_ok=false;
 };
-static PayloadInfo read_payload_from_file(const std::filesystem::path& exe){
+static PayloadInfo read_payload_from_file(const fs::path& exe){
     PayloadInfo R;
     std::ifstream f(exe, std::ios::binary); if(!f) return R;
     f.seekg(0, std::ios::end);
@@ -269,22 +312,22 @@ static PayloadInfo read_payload_from_file(const std::filesystem::path& exe){
     return R;
 }
 
-// ---- runtime：啟動時若帶 payload 就印自證橫幅 -> 執行 -> 退出 ----
+// ---- runtime嚗????亙葆 payload 撠勗?芾?璈怠? -> ?瑁? -> ???----
 static bool maybe_run_embedded_payload(){
 #ifdef _WIN32
     wchar_t pathW[MAX_PATH]{0};
     GetModuleFileNameW(nullptr, pathW, MAX_PATH);
-    std::filesystem::path self(pathW);
+    fs::path self(pathW);
 #else
-    std::filesystem::path self = "/proc/self/exe";
+    fs::path self = "/proc/self/exe";
 #endif
     auto R = read_payload_from_file(self);
     if(!R.ok) return false;
 
-    // 讀到 R 之後、印橫幅之前加入：
+    // 霈??R 銋??璈怠?銋??嚗?
     bool show_proof = false;
 
-    // 1) 命令列參數觸發（支援 --prove / --proof / --selfhost-info）
+    // 1) ?賭誘???貉孛?潘??舀 --prove / --proof / --selfhost-info嚗?
     #ifdef _WIN32
     {
         std::wstring cmd = GetCommandLineW();
@@ -298,23 +341,23 @@ static bool maybe_run_embedded_payload(){
     }
     #else
     {
-        // 非 Windows 可用 argc/argv 或 /proc/self/cmdline（依你的現有架構擇一）
-        // 下面是範例：若你在這個早期路徑拿不到 argv，可以先略過（僅用環境變數啟用）
+        // ??Windows ?舐 argc/argv ??/proc/self/cmdline嚗?雿??暹??嗆???嚗?
+        // 銝?舐?靘??乩??券?楝敺銝 argv嚗隞亙??仿?嚗??函憓??詨??剁?
     }
     #endif
 
-    // 2) 環境變數觸發（CI/腳本用）
+    // 2) ?啣?霈閫貊嚗I/?單?剁?
     if (const char* s = std::getenv("ZHCL_SELFHOST_SHOW")) {
         if (s[0]=='1' || s[0]=='y' || s[0]=='Y' || s[0]=='t' || s[0]=='T') {
             show_proof = true;
         }
     }
 
-    // 3) 若你有在 Trailer.flags 設過「SHF_SILENT_BANNER」，此處可完全忽略它
-    //    因為我們現在預設就是靜默，只有顯式要求才顯示。
+    // 3) ?乩?? Trailer.flags 閮剝??HF_SILENT_BANNER??甇方??臬??典蕭?亙?
+    //    ???券?閮剖停?舫?暺??芣?憿臬?閬??＊蝷箝?
 
-    // —— 原本這裡是直接 printf 橫幅 ——
-    //    改成：只有 show_proof 才印
+    // ????ㄐ?舐??printf 璈怠? ??
+    //    ?寞?嚗??show_proof ?
     if (show_proof) {
         std::printf("[selfhost] payload v%u %s size=%llu crc=%s\n",
             R.tr.version,
@@ -328,16 +371,16 @@ static bool maybe_run_embedded_payload(){
         std::exit(3);
     }
 
-    execute_bc(R.data); // 不返回
+    execute_bc(R.data); // 銝???
     return true;
 }
 
-// ---- 翻譯器：JS → 位元碼（PoC：console.log("…") / 其他忽略）----
+// ---- 蝧餉陌?剁?JS ??雿?蝣潘?PoC嚗onsole.log("??) / ?嗡?敹賜嚗?---
 static std::vector<uint8_t> translate_js_to_bc(const std::string& js){
     std::vector<uint8_t> bc; std::istringstream ss(js); std::string line;
-    // 處理按行分割的輸入
+    // ??????撓??
     while(std::getline(ss,line)){
-        // 去除前後空白
+        // ?駁??蝛箇
         size_t start = line.find_first_not_of(" \t");
         if(start == std::string::npos) continue;
         line = line.substr(start);
@@ -345,27 +388,27 @@ static std::vector<uint8_t> translate_js_to_bc(const std::string& js){
 
         auto pos = line.find("console.log");
         if(pos != std::string::npos){
-            // 找到 console.log( 之後的內容
+            // ?曉 console.log( 銋??摰?
             size_t paren_start = line.find('(', pos);
             if(paren_start == std::string::npos) continue;
             size_t paren_end = line.find(')', paren_start);
             if(paren_end == std::string::npos) continue;
 
             std::string arg = line.substr(paren_start + 1, paren_end - paren_start - 1);
-            // 簡單處理：如果是以引號開始和結束，提取內容
+            // 蝪∪??嚗??隞亙???憪?蝯?嚗??摰?
             if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
                 std::string content = arg.substr(1, arg.size() - 2);
                 auto v = enc_print(content);
                 bc.insert(bc.end(), v.begin(), v.end());
             }
-            // TODO: 處理變數連接如 "x = " + x
+            // TODO: ??霈??憒?"x = " + x
         }
-        // 忽略其他行（變數聲明、函數等）
+        // 敹賜?嗡?銵?霈?脫???貊?嚗?
     }
-    // 如果沒有行分隔符，嘗試處理整個字符串
+    // 憒?瘝?銵??泵嚗?閰西????蝚虫葡
     if(bc.empty()){
         std::string content = js;
-        // 去除前後空白
+        // ?駁??蝛箇
         size_t start = content.find_first_not_of(" \t\r\n");
         if(start != std::string::npos){
             content = content.substr(start);
@@ -377,13 +420,13 @@ static std::vector<uint8_t> translate_js_to_bc(const std::string& js){
         
         auto pos = content.find("console.log");
         if(pos != std::string::npos){
-            // 找到 console.log( 之後的內容
+            // ?曉 console.log( 銋??摰?
             size_t paren_start = content.find('(', pos);
             if(paren_start != std::string::npos){
                 size_t paren_end = content.find(')', paren_start);
                 if(paren_end != std::string::npos){
                     std::string arg = content.substr(paren_start + 1, paren_end - paren_start - 1);
-                    // 簡單處理：如果是以引號開始和結束，提取內容
+                    // 蝪∪??嚗??隞亙???憪?蝯?嚗??摰?
                     if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
                         std::string text = arg.substr(1, arg.size() - 2);
                         auto v = enc_print(text);
@@ -396,9 +439,9 @@ static std::vector<uint8_t> translate_js_to_bc(const std::string& js){
     return bc;
 }
 
-// ---- 翻譯器：中文自然語言 .zh → 位元碼（PoC：輸出字串 "…" / 其他原樣）----
+// ---- 蝧餉陌?剁?銝剜??芰隤? .zh ??雿?蝣潘?PoC嚗撓?箏?銝?"?? / ?嗡??見嚗?---
 
-// 1) UTF-8 BOM 去除 + 全形引號/空白正規化 + 繁簡對應
+// 1) UTF-8 BOM ?駁 + ?典耦撘?/蝛箇甇????+ 蝜陛撠?
 static inline void strip_bom_utf8(std::string& s){
     if(s.size()>=3 && (uint8_t)s[0]==0xEF && (uint8_t)s[1]==0xBB && (uint8_t)s[2]==0xBF) s.erase(0,3);
 }
@@ -412,165 +455,73 @@ static inline void replace_all(std::string& s, const std::string& a, const std::
     }
 }
 
-// 繁體優先：只做標點/空白正規化
-static std::string normalize_traditional_line(const std::string& in){
-    std::string s = in;
-    replace_all(s, u8"\u3000", " "); // 全形空白
-    replace_all(s, u8"「", "\"");
-    replace_all(s, u8"」", "\"");
-    replace_all(s, u8"『", "\"");
-    replace_all(s, u8"』", "\"");
-    return s; // 不要做任何簡→繁
-}
-
-// 若出現簡體關鍵詞，直接報錯
-static bool line_contains_simplified_keywords(const std::string& s, std::string* hit=nullptr){
-    static const char* simp[] = {
-        u8"输出", u8"打印", u8"字符串", u8"整数",
-        u8"设为", u8"等于", u8"不等于", u8"大于", u8"小于",
-        u8"大于等于", u8"小于等于", u8"否则"
-    };
-    for(const char* k : simp){
-        if(s.find(k) != std::string::npos){ if(hit) *hit = k; return true; }
-    }
-    return false;
-}
-
-// 2) 關鍵詞表（避免歧義：賦值用「設為」，相等用「等於」）
-struct ZhKeywords {
-    // 賦值/比較
-    const char* assign_kw = "設為";  // x 設為 3
-    const char* eq_kw     = "等於";  // x 等於 3 → ==
-    // I/O
-    const char* out_kw    = "輸出";  // 輸出 "..."
-    const char* str_kw    = "字串";
-    const char* int_kw    = "整數";
-    // 控制流
-    const char* if_kw     = "如果";
-    const char* else_kw   = "否則";
-    const char* while_kw  = "當";
-    const char* end_kw    = "結束";
-} ZH;
-
-// 3) 簡單詞法：切成 tokens（空白/引號 aware）
-static std::vector<std::string> zh_tokenize(const std::string& line){
-    std::vector<std::string> t; std::string cur; bool inq=false;
-    for(size_t i=0;i<line.size();++i){
-        char c=line[i];
-        if(c=='"'){ cur.push_back(c); inq=!inq; continue; }
-        if(inq){ cur.push_back(c); continue; }
-        if(c==' ' || c=='\t'){ if(!cur.empty()){ t.push_back(cur); cur.clear(); } }
-        else cur.push_back(c);
-    }
-    if(!cur.empty()) t.push_back(cur);
-    return t;
-}
-
-// 4) 中文→IR（行級；最小子集）
-static void emit_u64(std::vector<uint8_t>& bc, uint64_t v){ for(int i=0;i<8;i++) bc.push_back((uint8_t)((v>>(8*i))&0xFF)); }
-static void emit_str(std::vector<uint8_t>& bc, const std::string& s){
-    bc.push_back((uint8_t)OP_PRINT); emit_u64(bc, (uint64_t)s.size()); bc.insert(bc.end(), s.begin(), s.end());
-}
-
-// 變數槽位分配（簡單 map：名稱→uint8_t）
-static uint8_t slot_of(std::unordered_map<std::string,uint8_t>& tab, const std::string& name){
-    auto it=tab.find(name); if(it!=tab.end()) return it->second;
-    uint8_t id=(uint8_t)tab.size(); tab[name]=id; return id;
-}
-
-static std::vector<uint8_t> translate_zh_to_bc(const std::string& srcRaw){
-    std::string src = srcRaw; strip_bom_utf8(src);
-    std::vector<uint8_t> bc; std::istringstream ss(src); std::string line;
-    std::unordered_map<std::string,uint8_t> vars;
-    std::vector<size_t> if_patch; // 之後可用於 JZ/JMP 回填（目前先不實作控制流）
-
-    auto ltrim=[](std::string& s){ size_t i=0; while(i<s.size() && (unsigned char)s[i]<=32) ++i; s.erase(0,i); };
-    auto rtrim=[](std::string& s){ while(!s.empty() && (unsigned char)s.back()<=32) s.pop_back(); };
-
-    size_t lineno = 0;
-    while(std::getline(ss,line)){
-        ++lineno;
-        std::string raw=line;
-        line = normalize_traditional_line(line);
-        ltrim(line); rtrim(line); if(line.empty()) continue;
-
-        // 簡體關鍵詞檢查（硬錯）
-        std::string hit;
-        if(line_contains_simplified_keywords(line, &hit)){
-            std::fprintf(stderr,
-                "[.zh] 不支援簡體關鍵詞（第%zu行）：偵測到「%s」；請改用繁體，如：輸出/字串/整數/設為/否則/等於\n",
-                lineno, hit.c_str());
-            std::exit(2);
-        }
-
-        auto tok = zh_tokenize(line);
-        if(tok.empty()) continue;
-
-        // 輸出 字串 "..."
-        if(tok.size()>=3 && tok[0]==ZH.out_kw && tok[1]==ZH.str_kw && tok[2].size()>=2 && tok[2].front()=='"' && tok[2].back()=='"'){
-            emit_str(bc, tok[2].substr(1, tok[2].size()-2));
-            continue;
-        }
-        // 定義 整數 x 設為 3
-        if(tok.size()>=5 && (tok[0]=="定義"||tok[0]=="宣告") && tok[1]==ZH.int_kw && tok[3]==ZH.assign_kw){
-            uint8_t id = slot_of(vars, tok[2]);
-            bc.push_back((uint8_t)OP_SET_I64); bc.push_back(id);
-            int64_t v = std::stoll(tok[4]); emit_u64(bc, (uint64_t)v);
-            continue;
-        }
-        // x 設為 3
-        if(tok.size()>=3 && tok[1]==ZH.assign_kw){
-            uint8_t id = slot_of(vars, tok[0]);
-            bc.push_back((uint8_t)OP_SET_I64); bc.push_back(id);
-            int64_t v = std::stoll(tok[2]); emit_u64(bc, (uint64_t)v);
-            continue;
-        }
-        // 輸出 整數 x
-        if(tok.size()>=3 && tok[0]==ZH.out_kw && tok[1]==ZH.int_kw){
-            uint8_t id = slot_of(vars, tok[2]);
-            bc.push_back((uint8_t)OP_PRINT_INT); bc.push_back(id);
-            continue;
-        }
-
-        // 其他：原樣回饋
-        emit_str(bc, std::string("[未解析] ")+raw);
-    }
-    bc.push_back((uint8_t)OP_END);
-    return bc;
-}
-
-// （可選）IR → C++（純為「要給人看」的產物）
-static std::string emit_cpp_from_bc(const std::vector<uint8_t>& bc){
+// 嚗?賂?IR ??C++嚗??箝?蝯虫犖???Ｙ嚗?
+std::string emit_cpp_from_bc(const std::vector<uint8_t>& bc){
     std::ostringstream out;
     out << "#include <cstdio>\n#include <cstdint>\nint main(){\n";
-    size_t i=0; while(i<bc.size()){
+
+    // First pass: collect all variable IDs that are used
+    std::set<uint8_t> used_vars;
+    size_t i = 0;
+    while (i < bc.size()) {
         uint8_t op = bc[i++];
-        if(op==(uint8_t)OP_PRINT){
-            uint64_t n=0; for(int k=0;k<8;k++) n|=((uint64_t)bc[i++])<<(8*k);
-            std::string s((const char*)&bc[i], (size_t)n); i+=(size_t)n;
+        if (op == (uint8_t)OP_PRINT_INT) {
+            if (i < bc.size()) {
+                uint8_t id = bc[i++];
+                used_vars.insert(id);
+            }
+        } else if (op == (uint8_t)OP_SET_I64) {
+            if (i < bc.size()) {
+                uint8_t id = bc[i++];
+                used_vars.insert(id);
+                i += 8; // skip the value
+            }
+        } else if (op == (uint8_t)OP_PRINT) {
+            if (i + 8 <= bc.size()) {
+                uint64_t n = 0;
+                for (int k = 0; k < 8; k++) n |= ((uint64_t)bc[i++]) << (8 * k);
+                i += (size_t)n;
+            }
+        } else if (op == (uint8_t)OP_END) {
+            break;
+        }
+    }
+
+    // Declare all variables at the beginning
+    for (uint8_t id : used_vars) {
+        out << "  long long v" << (int)id << " = 0;\n";
+    }
+
+    // Second pass: generate operations
+    i = 0;
+    while (i < bc.size()) {
+        uint8_t op = bc[i++];
+        if (op == (uint8_t)OP_PRINT) {
+            uint64_t n = 0; for (int k = 0; k < 8; k++) n |= ((uint64_t)bc[i++]) << (8 * k);
+            std::string s((const char*)&bc[i], (size_t)n); i += (size_t)n;
             out << "  std::puts(\"";
-            for(char c: s){ if(c=='\\' || c=='"') out<<'\\'; out<<c; }
+            for (char c : s) { if (c == '\\' || c == '"') out << '\\'; out << c; }
             out << "\");\n";
-        } else if(op==(uint8_t)OP_PRINT_INT){
-            uint8_t id = bc[i++]; out << "  std::printf(\"%lld\\n\", (long long)v"<<(int)id<<");\n";
-        } else if(op==(uint8_t)OP_SET_I64){
-            uint8_t id = bc[i++]; int64_t v=0; for(int k=0;k<8;k++) v|=((int64_t)bc[i++])<<(8*k);
-            out << "  long long v"<<(int)id<<" = "<<(long long)v<<";\n";
-        } else if(op==(uint8_t)OP_END){
+        } else if (op == (uint8_t)OP_PRINT_INT) {
+            uint8_t id = bc[i++]; out << "  std::printf(\"%lld\\n\", (long long)v" << (int)id << ");\n";
+        } else if (op == (uint8_t)OP_SET_I64) {
+            uint8_t id = bc[i++]; int64_t v = 0; for (int k = 0; k < 8; k++) v |= ((int64_t)bc[i++]) << (8 * k);
+            out << "  v" << (int)id << " = " << (long long)v << ";\n";
+        } else if (op == (uint8_t)OP_END) {
             break;
         } else {
-            out << "  // OP_"<<(int)op<<"\n"; break;
+            out << "  // OP_" << (int)op << "\n"; break;
         }
     }
     out << "  return 0;\n}\n";
     return out.str();
 }
 
-// ---- 翻譯器：Python → 位元碼（PoC：print("…") / 其他忽略）----
+// ---- 蝧餉陌?剁?Python ??雿?蝣潘?PoC嚗rint("??) / ?嗡?敹賜嚗?---
 static std::vector<uint8_t> translate_py_to_bc(const std::string& py){
     std::vector<uint8_t> bc; std::istringstream ss(py); std::string line;
     while(std::getline(ss,line)){
-        // 去除前後空白
+        // ?駁??蝛箇
         size_t start = line.find_first_not_of(" \t");
         if(start == std::string::npos) continue;
         line = line.substr(start);
@@ -578,30 +529,30 @@ static std::vector<uint8_t> translate_py_to_bc(const std::string& py){
 
         auto pos = line.find("print(");
         if(pos != std::string::npos){
-            // 找到 print( 之後的內容
+            // ?曉 print( 銋??摰?
             size_t paren_start = line.find('(', pos);
             if(paren_start == std::string::npos) continue;
             size_t paren_end = line.find(')', paren_start);
             if(paren_end == std::string::npos) continue;
 
             std::string arg = line.substr(paren_start + 1, paren_end - paren_start - 1);
-            // 簡單處理：如果是以引號開始和結束，提取內容
+            // 蝪∪??嚗??隞亙???憪?蝯?嚗??摰?
             if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
                 std::string content = arg.substr(1, arg.size() - 2);
                 auto v = enc_print(content);
                 bc.insert(bc.end(), v.begin(), v.end());
             }
         }
-        // 忽略其他行（變數聲明、函數等）
+        // 敹賜?嗡?銵?霈?脫???貊?嚗?
     }
     return bc;
 }
 
-// ---- 翻譯器：Go → 位元碼（PoC：fmt.Println("…") / 其他忽略）----
+// ---- 蝧餉陌?剁?Go ??雿?蝣潘?PoC嚗mt.Println("??) / ?嗡?敹賜嚗?---
 static std::vector<uint8_t> translate_go_to_bc(const std::string& go){
     std::vector<uint8_t> bc; std::istringstream ss(go); std::string line;
     while(std::getline(ss,line)){
-        // 去除前後空白
+        // ?駁??蝛箇
         size_t start = line.find_first_not_of(" \t");
         if(start == std::string::npos) continue;
         line = line.substr(start);
@@ -609,30 +560,30 @@ static std::vector<uint8_t> translate_go_to_bc(const std::string& go){
 
         auto pos = line.find("fmt.Println(");
         if(pos != std::string::npos){
-            // 找到 fmt.Println( 之後的內容
+            // ?曉 fmt.Println( 銋??摰?
             size_t paren_start = line.find('(', pos);
             if(paren_start == std::string::npos) continue;
             size_t paren_end = line.find(')', paren_start);
             if(paren_end == std::string::npos) continue;
 
             std::string arg = line.substr(paren_start + 1, paren_end - paren_start - 1);
-            // 簡單處理：如果是以引號開始和結束，提取內容
+            // 蝪∪??嚗??隞亙???憪?蝯?嚗??摰?
             if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
                 std::string content = arg.substr(1, arg.size() - 2);
                 auto v = enc_print(content);
                 bc.insert(bc.end(), v.begin(), v.end());
             }
         }
-        // 忽略其他行（變數聲明、函數等）
+        // 敹賜?嗡?銵?霈?脫???貊?嚗?
     }
     return bc;
 }
 
-// ---- 翻譯器：Java → 位元碼（PoC：System.out.println("…") / 其他忽略）----
+// ---- 蝧餉陌?剁?Java ??雿?蝣潘?PoC嚗ystem.out.println("??) / ?嗡?敹賜嚗?---
 static std::vector<uint8_t> translate_java_to_bc(const std::string& java){
     std::vector<uint8_t> bc; std::istringstream ss(java); std::string line;
     while(std::getline(ss,line)){
-        // 去除前後空白
+        // ?駁??蝛箇
         size_t start = line.find_first_not_of(" \t");
         if(start == std::string::npos) continue;
         line = line.substr(start);
@@ -640,36 +591,36 @@ static std::vector<uint8_t> translate_java_to_bc(const std::string& java){
 
         auto pos = line.find("System.out.println(");
         if(pos != std::string::npos){
-            // 找到 System.out.println( 之後的內容
+            // ?曉 System.out.println( 銋??摰?
             size_t paren_start = line.find('(', pos);
             if(paren_start == std::string::npos) continue;
             size_t paren_end = line.find(')', paren_start);
             if(paren_end == std::string::npos) continue;
 
             std::string arg = line.substr(paren_start + 1, paren_end - paren_start - 1);
-            // 簡單處理：如果是以引號開始和結束，提取內容
+            // 蝪∪??嚗??隞亙???憪?蝯?嚗??摰?
             if(arg.size() >= 2 && arg.front() == '"' && arg.back() == '"'){
                 std::string content = arg.substr(1, arg.size() - 2);
                 auto v = enc_print(content);
                 bc.insert(bc.end(), v.begin(), v.end());
             }
         }
-        // 忽略其他行（變數聲明、函數等）
+        // 敹賜?嗡?銵?霈?脫???貊?嚗?
     }
     return bc;
 }
 
-// ---- pack：寫入 version 與 CRC、印自證訊息 ----
-static int pack_payload_to_exe(const std::filesystem::path& output_exe,
+// ---- pack嚗神??version ??CRC??芾?閮 ----
+static int pack_payload_to_exe(const fs::path& output_exe,
                                const std::vector<uint8_t>& bc,
 #ifdef _WIN32
-                               const std::filesystem::path& self_exe = []{
+                               const fs::path& self_exe = []{
                                    wchar_t pathW[MAX_PATH]{0};
                                    GetModuleFileNameW(nullptr, pathW, MAX_PATH);
-                                   return std::filesystem::path(pathW);
+                                   return fs::path(pathW);
                                }()
 #else
-                               const std::filesystem::path& self_exe = "/proc/self/exe"
+                               const fs::path& self_exe = "/proc/self/exe"
 #endif
 ){
     if(!file_copy(self_exe, output_exe)) {
@@ -677,7 +628,7 @@ static int pack_payload_to_exe(const std::filesystem::path& output_exe,
     }
     std::ofstream out(output_exe, std::ios::binary | std::ios::app);
     if(!out){ std::fprintf(stderr, "[selfhost] open out for append failed\n"); return 5; }
-    uint64_t off = (uint64_t)std::filesystem::file_size(output_exe);
+    uint64_t off = (uint64_t)fs::file_size(output_exe);
     out.write((const char*)bc.data(), (std::streamsize)bc.size());
 
     Trailer tr{};
@@ -698,21 +649,25 @@ static int pack_payload_to_exe(const std::filesystem::path& output_exe,
     return 0;
 }
 
-// ---- 對外入口：由 CLI 呼叫 ----
-static int pack_from_file(const std::string& lang, const std::filesystem::path& in, const std::filesystem::path& out){
+// ---- 撠??亙嚗 CLI ?澆 ----
+
+static int pack_from_file(const std::string& lang, const fs::path& in, const fs::path& out){
     std::string src = read_all(in);
     std::vector<uint8_t> bc;
     if(lang=="js" || lang=="javascript") bc = translate_js_to_bc(src);
     else if(lang=="py" || lang=="python") bc = translate_py_to_bc(src);
     else if(lang=="go")                   bc = translate_go_to_bc(src);
     else if(lang=="java")                 bc = translate_java_to_bc(src);
-    else if(lang=="zh")                   bc = translate_zh_to_bc(src);
+    else if(lang=="zh") {
+        ZhFrontend fe;
+        bc = fe.translate_to_bc(src);
+    }
     else { std::fprintf(stderr, "[selfhost] unsupported lang: %s\n", lang.c_str()); return 2; }
     return pack_payload_to_exe(out, bc);
 }
 
-// ---- 對外入口不變（pack_from_file），下面加 verify 功能即可 ----
-static int verify_exe(const std::filesystem::path& exe){
+// ---- 撠??亙銝?嚗ack_from_file嚗?銝??verify ??喳 ----
+static int verify_exe(const fs::path& exe){
     auto R = read_payload_from_file(exe);
     if(!R.ok){
         std::fprintf(stderr,"[selfhost] no payload in: %s\n", exe.string().c_str());
@@ -732,15 +687,18 @@ static int handle_selfhost_explain(int argc, char** argv) {
         std::puts("Usage:\n  zhcl_universal selfhost explain <input.(js|py|go|java|zh)>");
         return 2;
     }
-    std::filesystem::path in = argv[3];
-    std::string src = read_all(in); // 同命名空間內可直接用
+    fs::path in = argv[3];
+    std::string src = read_all(in); // ??征??舐?亦
     std::vector<uint8_t> bc;
     auto ext = in.extension().string();
     if (ext == ".js")      bc = translate_js_to_bc(src);
     else if (ext == ".py") bc = translate_py_to_bc(src);
     else if (ext == ".go") bc = translate_go_to_bc(src);
     else if (ext == ".java") bc = translate_java_to_bc(src);
-    else if (ext == ".zh") bc = translate_zh_to_bc(src);
+    else if (ext == ".zh") {
+        ZhFrontend fe;
+        bc = fe.translate_to_bc(src);
+    }
     else {
         std::fprintf(stderr, "[selfhost] unsupported input: %s\n", ext.c_str());
         return 2;
@@ -751,8 +709,31 @@ static int handle_selfhost_explain(int argc, char** argv) {
 
 } // namespace selfhost
 
-// Use explicit std:: prefix instead of using namespace std
-namespace fs = std::filesystem;
+// === glue: .zh -> C++ using the new ZhFrontend (no Python needed) ===
+static inline void emit_u64(std::vector<uint8_t>& bc, uint64_t v){
+    for(int i=0;i<8;i++) bc.push_back((uint8_t)((v>>(8*i))&0xFF)); // little-endian
+}
+static inline void emit_i64(std::vector<uint8_t>& bc, int64_t v){
+    emit_u64(bc, (uint64_t)v);
+}
+
+static void emit_PRINT_adapter(std::vector<uint8_t>& bc, const std::string& s){
+    bc.push_back((uint8_t)selfhost::OP_PRINT);
+    emit_u64(bc, (uint64_t)s.size());
+    bc.insert(bc.end(), s.begin(), s.end());
+}
+static void emit_SET_I64_adapter(std::vector<uint8_t>& bc, uint8_t slot, long long v){
+    bc.push_back((uint8_t)selfhost::OP_SET_I64);
+    bc.push_back(slot);
+    emit_i64(bc, v);
+}
+static void emit_PRINT_INT_adapter(std::vector<uint8_t>& bc, uint8_t slot){
+    bc.push_back((uint8_t)selfhost::OP_PRINT_INT);
+    bc.push_back(slot);
+}
+static void emit_END_adapter(std::vector<uint8_t>& bc){
+    bc.push_back((uint8_t)selfhost::OP_END);
+}
 
 // Forward declarations
 class CompilerRegistry;
@@ -869,6 +850,56 @@ private:
                     break;
                 }
             }
+
+            // Special handling for MSVC: search common installation paths
+            if (!compilers[name].available && name == "msvc") {
+                // Try the exact path from compile_definitions.bat first
+                std::string exact_path = "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe";
+                std::string test_exact = "\"" + exact_path + "\" /? >nul 2>&1";
+                if (system(test_exact.c_str()) == 0) {
+                    compilers[name].available = true;
+                    compilers[name].command = "\"" + exact_path + "\"";
+                } else {
+                    // Fallback to path search
+                    std::vector<std::string> common_paths = {
+                        "C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\VC\\Tools\\MSVC",
+                        "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Tools\\MSVC",
+                        "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC",
+                        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\VC\\Tools\\MSVC",
+                        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Enterprise\\VC\\Tools\\MSVC",
+                        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Tools\\MSVC",
+                        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC",
+                        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Professional\\VC\\Tools\\MSVC",
+                        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Enterprise\\VC\\Tools\\MSVC",
+                        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\Community\\VC\\Tools\\MSVC",
+                        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Tools\\MSVC"
+                    };
+
+                    for (const auto& base_path : common_paths) {
+                        if (fs::exists(base_path)) {
+                            // Find the latest version directory
+                            std::vector<std::string> versions;
+                            for (const auto& entry : fs::directory_iterator(base_path)) {
+                                if (fs::is_directory(entry)) {
+                                    versions.push_back(entry.path().string());
+                                }
+                            }
+                            if (!versions.empty()) {
+                                // Sort and take the latest version
+                                std::sort(versions.begin(), versions.end());
+                                std::string latest_version = versions.back();
+                                std::string cl_path = latest_version + "\\bin\\Hostx64\\x64\\cl.exe";
+                                std::string test_cl = "\"" + cl_path + "\" /? >nul 2>&1";
+                                if (system(test_cl.c_str()) == 0) {
+                                    compilers[name].available = true;
+                                    compilers[name].command = "\"" + cl_path + "\"";
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 };
@@ -888,25 +919,18 @@ public:
         std::vector<std::string> default_flags;
 
         if (registry->compilers["msvc"].available) {
-            compiler_cmd = "cl";
+            compiler_cmd = registry->compilers["msvc"].command;
             default_flags = {"/nologo", "/utf-8", "/EHsc", "/std:c++17"};
         } else if (registry->compilers["clang++"].available) {
-            compiler_cmd = "clang++";
+            compiler_cmd = registry->compilers["clang++"].command;
             default_flags = {"-Wall", "-std=c++17"};
         } else if (registry->compilers["g++"].available) {
-            compiler_cmd = "g++";
+            compiler_cmd = registry->compilers["g++"].command;
             default_flags = {"-Wall", "-std=c++17"};
         } else {
-            // Try hardcoded MSVC path as fallback
-            std::string msvc_path = "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe\"";
-            std::string test_cmd = msvc_path + " /? >nul 2>&1";
-            if (system(test_cmd.c_str()) == 0) {
-                compiler_cmd = msvc_path;
-                default_flags = {"/nologo", "/utf-8", "/EHsc", "/std:c++17"};
-            } else {
-                compiler_cmd = "cc";
-                default_flags = {"-std=c++17"};
-            }
+            // No compiler available
+            std::cerr << "Error: No C/C++ compiler found. Please install Visual Studio, GCC, or Clang." << std::endl;
+            return 1;
         }
 
         std::string cmd = compiler_cmd;
@@ -1128,6 +1152,12 @@ public:
     }
 
     int run(const std::string& executable, bool verbose) override {
+        // Check if it's a .zh file - if so, execute directly without compilation
+        if (executable.size() > 3 && executable.substr(executable.size() - 3) == ".zh") {
+            return run_zh_file(executable, verbose);
+        }
+
+        // Otherwise, run as normal executable
         std::string cmd = "\"" + executable + "\"";
         if (verbose) std::cout << "Running Chinese program: " << cmd << std::endl;
         return system(cmd.c_str());
@@ -1138,184 +1168,30 @@ public:
     }
 
 private:
-    int translate_zh_to_cpp(const std::string& zh_file, const std::string& cpp_file, bool verbose) {
-        std::ifstream in(zh_file);
-        std::ofstream out(cpp_file);
-        std::string line;
+    int run_zh_file(const std::string& zh_file, bool verbose) {
+        if (verbose) std::cout << "Running Chinese file directly: " << zh_file << std::endl;
 
-        out << "#include \"../include/chinese.h\"\n";
-        out << "#include <iostream>\n";
-        out << "#include <stdlib.h>\n";
-        out << "#include <math.h>\n";
-        out << "#include <time.h>\n\n";
+        // Read the .zh file
+        std::ifstream ifs(zh_file, std::ios::binary);
+        if (!ifs) {
+            if (verbose) std::fprintf(stderr, "[zhcl] cannot open %s\n", zh_file.c_str());
+            return 1;
+        }
+        std::string src((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
-        std::vector<std::string> global_functions;
-        std::string main_code;
-        bool in_function = false;
-        std::string current_function;
-
-        while (std::getline(in, line)) {
-            line = trim(line);
-
-            // Skip empty lines and comments
-            if (line.empty() || line.substr(0, 2) == "//") {
-                if (!line.empty()) {
-                    if (in_function) current_function += line + "\n";
-                    else main_code += line + "\n";
-                }
-                continue;
-            }
-
-            // Function definition
-            if (line.substr(0, 3) == "函數 " && line.find('(') != std::string::npos && !(line.size() >= 1 && line[line.size() - 1] == ';')) {
-                in_function = true;
-                std::string func_def = line.substr(3);
-                // Replace parameter types
-                func_def = replace_all(func_def, "字串", "char*");
-                func_def = replace_all(func_def, "整數", "int");
-                func_def = replace_all(func_def, "小數", "double");
-                // Replace parameter names
-                func_def = replace_all(func_def, "半徑", "radius");
-                func_def = replace_all(func_def, "面積", "area");
-                func_def = replace_all(func_def, "結果", "result");
-                func_def = replace_all(func_def, "年齡", "age");
-                func_def = replace_all(func_def, "名字", "name");
-                func_def = replace_all(func_def, "圓周率值", "pi_value");
-                func_def = replace_all(func_def, "訊息", "message");
-                func_def = replace_all(func_def, "問候", "greet");
-                current_function = "void " + func_def + " {\n";
-                continue;
-            }
-
-            // Function end
-            if (line == "函數結束") {
-                if (in_function) {
-                    current_function += "}\n";
-                    global_functions.push_back(current_function);
-                    current_function = "";
-                    in_function = false;
-                }
-                continue;
-            }
-
-            // Process function body or main code
-            if (in_function) {
-                current_function += process_line(line) + "\n";
-            } else {
-                main_code += process_line(line) + "\n";
-            }
+        // Convert .zh to bytecode
+        std::vector<uint8_t> bc;
+        ZhFrontend fe;
+        try {
+            bc = fe.translate_to_bc(src);
+        } catch (const std::exception& e) {
+            std::fprintf(stderr, "[zhcl] zh->bc failed: %s\n", e.what());
+            return 2;
         }
 
-        // Write global functions
-        for (const auto& func : global_functions) {
-            out << func << "\n";
-        }
-
-        // Write main function
-        out << "int main() {\n";
-        out << "    初始化中文環境();\n";
-        out << main_code;
-        out << "    return 0;\n";
-        out << "}\n";
-
-        in.close();
-        out.close();
-
-        if (verbose) std::cout << "Translated " << zh_file << " to " << cpp_file << std::endl;
-        return 0;
-    }
-
-    std::string process_line(const std::string& line) {
-        std::string result = line;
-
-        // Variable declarations
-        if (result.substr(0, 3) == "整數 ") {
-            result = "int " + result.substr(3);
-        } else if (result.substr(0, 3) == "小數 ") {
-            result = "double " + result.substr(3);
-        } else if (result.substr(0, 3) == "字串 ") {
-            result = "char* " + result.substr(3);
-        }
-
-        // Control structures
-        result = replace_all(result, "如果", "if");
-        result = replace_all(result, "則", "");
-        result = replace_all(result, "否則", "else");
-        result = replace_all(result, "當", "while");
-        result = replace_all(result, "對於", "for");
-        result = replace_all(result, "印出", "printf");
-        result = replace_all(result, "輸出字串", "printf");
-        result = replace_all(result, "輸出整數", "printf");
-        result = replace_all(result, "輸出小數", "printf");
-        result = replace_all(result, "返回", "return");
-        result = replace_all(result, "結束", "}");
-
-        // Operators
-        result = replace_all(result, "等於", "==");
-        result = replace_all(result, "大於", ">");
-        result = replace_all(result, "小於", "<");
-        result = replace_all(result, "大於等於", ">=");
-        result = replace_all(result, "小於等於", "<=");
-        result = replace_all(result, "不等於", "!=");
-        result = replace_all(result, "且", "&&");
-        result = replace_all(result, "或", "||");
-        result = replace_all(result, "非", "!");
-
-        // Arithmetic
-        result = replace_all(result, "加", "+");
-        result = replace_all(result, "減", "-");
-        result = replace_all(result, "乘", "*");
-        result = replace_all(result, "除", "/");
-        result = replace_all(result, "取餘", "%");
-
-        // Assignment
-        result = replace_all(result, "等於", "=");
-
-        // Constants and variables
-        result = replace_all(result, "圓周率", "3.141592653589793");
-        result = replace_all(result, "半徑", "radius");
-        result = replace_all(result, "面積", "area");
-        result = replace_all(result, "結果", "result");
-        result = replace_all(result, "年齡", "age");
-        result = replace_all(result, "名字", "name");
-        result = replace_all(result, "圓周率值", "pi_value");
-        result = replace_all(result, "訊息", "message");
-        result = replace_all(result, "問候", "greet");
-        result = replace_all(result, "真", "true");
-        result = replace_all(result, "假", "false");
-        result = replace_all(result, "空", "NULL");
-
-        // Functions
-        result = replace_all(result, "隨機數", "rand()");
-        result = replace_all(result, "平方根", "sqrt");
-        result = replace_all(result, "絕對值", "abs");
-        result = replace_all(result, "正弦", "sin");
-        result = replace_all(result, "餘弦", "cos");
-        result = replace_all(result, "正切", "tan");
-
-        // Add semicolon if not present and not a control structure
-        if (!result.empty() && result.back() != ';' && result.back() != '{' && result.back() != '}') {
-            result += ';';
-        }
-
-        return result;
-    }
-
-    std::string replace_all(std::string str, const std::string& from, const std::string& to) {
-        size_t start_pos = 0;
-        while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-            str.replace(start_pos, from.length(), to);
-            start_pos += to.length();
-        }
-        return str;
-    }
-
-    // Helper function to trim whitespace from both ends of a string
-    std::string trim(const std::string& s) {
-        size_t start = s.find_first_not_of(" \t\r\n");
-        if (start == std::string::npos) return "";
-        size_t end = s.find_last_not_of(" \t\r\n");
-        return s.substr(start, end - start + 1);
+        // Execute bytecode directly
+        selfhost::execute_bc(bc);
+        return 0; // execute_bc doesn't return
     }
 };
 
@@ -1825,16 +1701,16 @@ private:
 
     // GCC-style arguments: gcc [options] file.c -o output
     int handle_gcc_args(int argc, char** argv) {
-        vector<string> files;
-        string output;
-        vector<string> includes;
-        vector<string> defines;
-        vector<string> flags;
+        std::vector<std::string> files;
+        std::string output;
+        std::vector<std::string> includes;
+        std::vector<std::string> defines;
+        std::vector<std::string> flags;
         bool compile_only = false;
         bool verbose = false;
 
         for (int i = 1; i < argc; ++i) {
-            string arg = argv[i];
+            std::string arg = argv[i];
 
             if (arg == "-c") {
                 compile_only = true;
@@ -1855,16 +1731,16 @@ private:
         }
 
         if (files.empty()) {
-            cerr << "gcc: no input files" << endl;
+            std::cerr << "gcc: no input files" << std::endl;
             return 1;
         }
 
         // Compile each file
         for (size_t idx = 0; idx < files.size(); ++idx) {
             const auto& file = files[idx];
-            string ext = fs::path(file).extension().string();
+            std::string ext = fs::path(file).extension().string();
 
-            string actual_output;
+            std::string actual_output;
             if (output.empty()) {
                 if (compile_only) {
                     actual_output = file.substr(0, file.find_last_of('.')) + ".o";
@@ -1911,13 +1787,13 @@ private:
 
     // JavaC-style arguments: javac [options] file.java
     int handle_javac_args(int argc, char** argv) {
-        vector<string> files;
-        string classpath;
-        string output_dir = ".";
-        vector<string> flags;
+        std::vector<std::string> files;
+        std::string classpath;
+        std::string output_dir = ".";
+        std::vector<std::string> flags;
 
         for (int i = 1; i < argc; ++i) {
-            string arg = argv[i];
+            std::string arg = argv[i];
 
             if (arg == "-cp" || arg == "-classpath") {
                 if (i + 1 < argc) {
@@ -1933,18 +1809,18 @@ private:
         }
 
         if (files.empty()) {
-            cerr << "javac: no input files" << endl;
+            std::cerr << "javac: no input files" << std::endl;
             return 1;
         }
 
         for (const auto& file : files) {
-            string ext = fs::path(file).extension().string();
+            std::string ext = fs::path(file).extension().string();
             if (ext != ".java") {
-                cerr << "javac: not a Java file: " << file << endl;
+                std::cerr << "javac: not a Java file: " << file << std::endl;
                 continue;
             }
 
-            string output = output_dir + "/" + file.substr(0, file.find_last_of('.')) + ".class";
+            std::string output = output_dir + "/" + file.substr(0, file.find_last_of('.')) + ".class";
 
             JavaProcessor processor;
             processor.registry = registry;
@@ -1960,14 +1836,14 @@ private:
 
     // RustC-style arguments: rustc [options] file.rs
     int handle_rustc_args(int argc, char** argv) {
-        vector<string> files;
-        string output;
-        string out_dir = ".";
-        vector<string> flags;
+        std::vector<std::string> files;
+        std::string output;
+        std::string out_dir = ".";
+        std::vector<std::string> flags;
         bool verbose = false;
 
         for (int i = 1; i < argc; ++i) {
-            string arg = argv[i];
+            std::string arg = argv[i];
 
             if (arg == "-o" && i + 1 < argc) {
                 output = argv[++i];
@@ -1981,18 +1857,18 @@ private:
         }
 
         if (files.empty()) {
-            cerr << "rustc: no input files" << endl;
+            std::cerr << "rustc: no input files" << std::endl;
             return 1;
         }
 
         for (const auto& file : files) {
-            string ext = fs::path(file).extension().string();
+            std::string ext = fs::path(file).extension().string();
             if (ext != ".rs") {
-                cerr << "rustc: not a Rust file: " << file << endl;
+                std::cerr << "rustc: not a Rust file: " << file << std::endl;
                 continue;
             }
 
-            string actual_output = output.empty() ?
+            std::string actual_output = output.empty() ?
                 out_dir + "/" + file.substr(0, file.find_last_of('.')) + ".exe" : output;
 
             RustProcessor processor;
@@ -2010,13 +1886,13 @@ private:
     int handle_go_args(int argc, char** argv) {
         if (argc < 2) return -1;
 
-        string subcommand = argv[1];
-        vector<string> files;
-        string output;
-        vector<string> flags;
+        std::string subcommand = argv[1];
+        std::vector<std::string> files;
+        std::string output;
+        std::vector<std::string> flags;
 
         for (int i = 2; i < argc; ++i) {
-            string arg = argv[i];
+            std::string arg = argv[i];
 
             if (arg == "-o" && i + 1 < argc) {
                 output = argv[++i];
@@ -2028,18 +1904,18 @@ private:
         }
 
         if (files.empty()) {
-            cerr << "go: no input files" << endl;
+            std::cerr << "go: no input files" << std::endl;
             return 1;
         }
 
         for (const auto& file : files) {
-            string ext = fs::path(file).extension().string();
+            std::string ext = fs::path(file).extension().string();
             if (ext != ".go") {
-                cerr << "go: not a Go file: " << file << endl;
+                std::cerr << "go: not a Go file: " << file << std::endl;
                 continue;
             }
 
-            string actual_output = output.empty() ?
+            std::string actual_output = output.empty() ?
                 file.substr(0, file.find_last_of('.')) + ".exe" : output;
 
             GoProcessor processor;
@@ -2064,7 +1940,7 @@ private:
 
     // Python-style arguments: python [options] file.py
     int handle_python_args(int argc, char** argv) {
-        vector<string> args;
+        std::vector<std::string> args;
 
         for (int i = 1; i < argc; ++i) {
             args.push_back(argv[i]);
@@ -2075,12 +1951,12 @@ private:
             return system("python");
         }
 
-        string file = args.back();
-        string ext = fs::path(file).extension().string();
+        std::string file = args.back();
+        std::string ext = fs::path(file).extension().string();
 
         if (ext != ".py") {
             // Not a Python file, pass through to python
-            string cmd = "python";
+            std::string cmd = "python";
             for (const auto& arg : args) {
                 cmd += " \"" + arg + "\"";
             }
@@ -2099,31 +1975,31 @@ private:
 class BuildSystem {
 public:
     CompilerRegistry* registry;
-    std::map<std::string, unique_ptr<LanguageProcessor>> processors;
+    std::map<std::string, std::unique_ptr<LanguageProcessor>> processors;
 
     BuildSystem(CompilerRegistry* reg) : registry(reg) {
         // Register processors
-        processors["cpp"] = make_unique<CppProcessor>();
+        processors["cpp"] = std::make_unique<CppProcessor>();
         auto* cpp_processor = static_cast<CppProcessor*>(processors["cpp"].get());
         cpp_processor->registry = registry;
 
-        processors["java"] = make_unique<JavaProcessor>();
+        processors["java"] = std::make_unique<JavaProcessor>();
         auto* java_processor = static_cast<JavaProcessor*>(processors["java"].get());
         java_processor->registry = registry;
 
-        processors["python"] = make_unique<PythonProcessor>();
+        processors["python"] = std::make_unique<PythonProcessor>();
         auto* python_processor = static_cast<PythonProcessor*>(processors["python"].get());
         python_processor->registry = registry;
 
-        processors["javascript"] = make_unique<JSProcessor>();
+        processors["javascript"] = std::make_unique<JSProcessor>();
         auto* js_processor = static_cast<JSProcessor*>(processors["javascript"].get());
         js_processor->registry = registry;
-        processors["go"] = make_unique<GoProcessor>();
+        processors["go"] = std::make_unique<GoProcessor>();
         auto* go_processor = static_cast<GoProcessor*>(processors["go"].get());
         go_processor->registry = registry;
-        processors["rust"] = make_unique<RustProcessor>();
+        processors["rust"] = std::make_unique<RustProcessor>();
 
-        processors["chinese"] = make_unique<ChineseProcessor>();
+        processors["chinese"] = std::make_unique<ChineseProcessor>();
         auto* chinese_processor = static_cast<ChineseProcessor*>(processors["chinese"].get());
         chinese_processor->registry = registry;
     }
@@ -2134,7 +2010,7 @@ public:
         // Find all source files
         std::vector<std::string> source_files;
         for (const auto& entry : fs::recursive_directory_iterator(project_dir)) {
-            if (entry.is_regular_file()) {
+            if (fs::is_regular_file(entry.path())) {
                 std::string ext = entry.path().extension().string();
                 if (is_supported_extension(ext)) {
                     source_files.push_back(entry.path().string());
@@ -2243,11 +2119,50 @@ private:
 // MAIN APPLICATION
 // ============================================================================
 
+// ---- NEW: Frontend-based commands (Self-Host Universal Runner)
+static bool read_file(const std::string& p, std::string& out) {
+    std::ifstream f(p, std::ios::binary);
+    if (!f) return false;
+    out.assign((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return true;
+}
+
+int cmd_list_frontends() {
+  for (auto& fe : FrontendRegistry::instance().all())
+    std::cout << "- " << fe->name() << "\n";
+  return 0;
+}
+
+int cmd_run(const std::string& path, const std::string& forced) {
+  std::string src;
+  if (!read_file(path, src)) { std::cerr << "read fail: " << path << "\n"; return 1; }
+  auto fe = forced.empty() ? FrontendRegistry::instance().match(path, src) : FrontendRegistry::instance().by_name(forced);
+  if (!fe) { std::cerr << "no frontend: " << (forced.empty() ? path : forced) << "\n"; return 2; }
+  std::cout << "Using frontend: " << fe->name() << "\n";
+  FrontendContext ctx{path, src, true};
+  Bytecode bc; std::string err;
+  if (!fe->compile(ctx, bc, err)) { std::cerr << "compile err: " << err << "\n"; return 3; }
+
+  // ?瑁?嚗?怎?? VM
+  selfhost::execute_bc(bc.data);
+  return 0; // execute_bc doesn't return
+}
+
 // ---- Forward declarations for functions used by main/clean_project ----
 int initialize_project(bool verbose);
 int list_compilers(const CompilerRegistry& registry, bool verbose);
 int clean_project(bool verbose);
 bool matches_pattern(const std::string& filename, const std::string& pattern);
+
+// 新增：判斷此命令是否需要偵測外部編譯器
+static bool command_needs_compiler_detect(const std::string& cmd){
+    return (cmd=="build" || cmd=="list" || cmd=="init" || cmd=="compile");
+}
+
+static bool skip_detect_from_env(){
+    const char* v = std::getenv("ZHCL_SKIP_DETECT");
+    return (v && *v && (*v!='0'));
+}
 
 int main(int argc, char** argv) {
 #ifdef _WIN32
@@ -2255,11 +2170,19 @@ int main(int argc, char** argv) {
     SetConsoleCP(CP_UTF8);
 #endif
 
-    初始化中文環境();
+    initialize_chinese_environment();
 
-    // 在 main() 進入點最前面加：
+    // ★ 強制把所有前端拉進可執行檔並註冊
+    register_fe_clite();
+    register_fe_cpplite();
+    register_fe_jslite();
+    register_fe_zh();
+
+    // Frontends are auto-registered via static initializers
+
+    // ??main() ?脣暺????
     if (selfhost::maybe_run_embedded_payload()) {
-        return 0; // 若檔尾有 payload，已執行並 ExitProcess()；保險起見 return
+        return 0; // ?交?撠暹? payload嚗歇?瑁?銝?ExitProcess()嚗??芾絲閬?return
     }
 
     // Check for --help first
@@ -2272,9 +2195,10 @@ int main(int argc, char** argv) {
         std::cout << "Commands:" << std::endl;
         std::cout << "  <file>          Compile single file" << std::endl;
         std::cout << "  build           Build entire project" << std::endl;
-        std::cout << "  run <file>      Compile and run file" << std::endl;
+        std::cout << "  run <file>      Run file directly (zh/js/py/go/java-lite)" << std::endl;
         std::cout << "  init            Initialize new project" << std::endl;
         std::cout << "  list            List available compilers" << std::endl;
+        std::cout << "  list-frontends  List available language frontends" << std::endl;
         std::cout << "  clean           Clean build artifacts" << std::endl;
         std::cout << "  selfhost        Self-contained executable generation" << std::endl;
         std::cout << std::endl;
@@ -2299,38 +2223,7 @@ int main(int argc, char** argv) {
         std::cout << "  zhcl selfhost verify hello.exe                   # Verify exe integrity" << std::endl;
         std::cout << "  set ZHCL_SELFHOST_QUIET=1 && hello.exe          # Run exe quietly" << std::endl;
         std::cout << std::endl;
-        std::cout << "Supported: C/C++, Java, Python, Go, JavaScript, Chinese (.zh - 繁體優先)" << std::endl;
-        std::cout << "Replaces: cl, gcc, g++, javac, cmake, make, and traditional build systems" << std::endl;
-        return 0;
-    }
-
-    CompilerRegistry registry;
-    registry.detect_compilers();
-
-    BuildSystem build_system(&registry);
-
-    if (argc < 2) {
-        std::cout << "zhcl - Universal Compiler & Build System Replacement v1.0" << std::endl;
-        std::cout << "One CPP file to compile: C, C++, Java, Python, Go, JavaScript, Chinese, and more" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Usage: zhcl <command> [options]" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Commands:" << std::endl;
-        std::cout << "  <file>          Compile single file" << std::endl;
-        std::cout << "  build           Build entire project" << std::endl;
-        std::cout << "  run <file>      Compile and run file" << std::endl;
-        std::cout << "  init            Initialize new project" << std::endl;
-        std::cout << "  list            List available compilers" << std::endl;
-        std::cout << "  clean           Clean build artifacts" << std::endl;
-        std::cout << "  selfhost        Self-contained executable generation" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Options:" << std::endl;
-        std::cout << "  -o <output>     Output file" << std::endl;
-        std::cout << "  --verbose       Verbose output" << std::endl;
-        std::cout << "  --selfhost      Generate self-contained executable (compile cmd)" << std::endl;
-        std::cout << "  --help          Show help" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Supported: C/C++, Java, Python, Go, JavaScript, Chinese (.zh)" << std::endl;
+        std::cout << "Supported: C/C++, Java, Python, Go, JavaScript, Chinese (.zh - 蝜??芸?)" << std::endl;
         std::cout << "Replaces: cl, gcc, g++, javac, cmake, make, and traditional build systems" << std::endl;
         return 0;
     }
@@ -2338,6 +2231,9 @@ int main(int argc, char** argv) {
     std::string command = argv[1];
     bool verbose = false;
     std::string output;
+    std::string to_lang;  // 靘? "cpp", "c", ...
+    bool no_detect = skip_detect_from_env();
+    bool force_vm = false;
 
     // Parse global options
     for (int i = 2; i < argc; ++i) {
@@ -2346,10 +2242,81 @@ int main(int argc, char** argv) {
             verbose = true;
         } else if (arg == "-o" && i + 1 < argc) {
             output = argv[++i];
+        } else if (arg == "--to" && i + 1 < argc) {
+            to_lang = argv[++i];
+        } else if (arg == "--no-detect") {
+            no_detect = true;
+        } else if (arg == "--vm") {
+            force_vm = true;
         }
     }
 
-    // Handle commands
+    // ---- 不需要外部編譯器偵測的指令，直接回傳 ----
+    if (command == "list-frontends") {
+        return cmd_list_frontends();
+    } else if (command == "run") {
+        std::string file;
+        std::string forced;
+        for (int i=2; i<argc; i++) {
+            std::string a = argv[i];
+            if (a.rfind("--frontend=",0)==0) {
+                forced = a.substr(11);
+            } else if (file.empty()) {
+                file = a;
+            } else {
+                // ignore extra
+            }
+        }
+        if (file.empty()) {
+            std::cerr << "Usage: zhcl run <file> [--frontend=name]\n";
+            return 1;
+        }
+        return cmd_run(file, forced);
+    } else if (command == "selfhost") {
+        if (argc < 3) {
+            std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>\n"
+                      "  zhcl_universal selfhost verify <exe>\n"
+                      "  zhcl_universal selfhost explain <input.(js|py|go|java|zh)>\n"
+                      "\n"
+                      "Note: Generated executables run silently by default. Use --prove/--proof/--selfhost-info\n"
+                      "      or set ZHCL_SELFHOST_SHOW=1 to display selfhost verification details.");
+            return 1;
+        }
+        std::string sub = argv[2];
+        if (sub == "pack") {
+            if (argc < 6 || std::string(argv[4]) != "-o") {
+                std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>");
+                return 2;
+            }
+            fs::path in = argv[3];
+            fs::path out = argv[5];
+            std::string lang;
+            auto ext = in.extension().string();
+            if (ext == ".js") lang = "js";
+            else if (ext == ".py") lang = "py";
+            else if (ext == ".go") lang = "go";
+            else if (ext == ".java") lang = "java";
+            else if (ext == ".zh") lang = "zh";
+            else { std::fprintf(stderr, "[selfhost] unsupported input: %s\n", ext.c_str()); return 2; }
+            int rc = selfhost::pack_from_file(lang, in, out);
+            return rc;
+        } else if (sub == "verify") {
+            if (argc < 4) { std::puts("Usage:\n  zhcl_universal selfhost verify <exe>"); return 2; }
+            return selfhost::verify_exe(argv[3]); // <== New
+        } else if (sub == "explain") {
+            return selfhost::handle_selfhost_explain(argc, argv);
+        }
+        std::fprintf(stderr, "Unknown subcommand: selfhost %s\n", sub.c_str());
+        return 1;
+    }
+
+    // ---- 下面的才建立 registry/build_system，並偵測編譯器 ----
+    CompilerRegistry registry;
+    if (command_needs_compiler_detect(command) && !no_detect) {
+        registry.detect_compilers();
+    }
+    BuildSystem build_system(&registry);
+
     if (command == "build") {
         return build_system.build_project(".", verbose);
     } else if (command == "init") {
@@ -2374,8 +2341,8 @@ int main(int argc, char** argv) {
                 std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>");
                 return 2;
             }
-            std::filesystem::path in = argv[3];
-            std::filesystem::path out = argv[5];
+            fs::path in = argv[3];
+            fs::path out = argv[5];
             std::string lang;
             auto ext = in.extension().string();
             if (ext == ".js") lang = "js";
@@ -2404,8 +2371,8 @@ int main(int argc, char** argv) {
         for (int i = 3; i < argc; ++i) {
             if (std::string(argv[i]) == "--selfhost") opt_selfhost = true;
         }
-        // ... 判斷輸入副檔名：
-        std::filesystem::path input_path(file);
+        // ... ?斗頛詨?舀???
+        fs::path input_path(file);
         auto ext = input_path.extension().string();
         if (opt_selfhost && (ext == ".js" || ext == ".py" || ext == ".go" || ext == ".java" || ext == ".zh")) {
             std::string lang;
@@ -2414,9 +2381,9 @@ int main(int argc, char** argv) {
             else if (ext == ".go") lang = "go";
             else if (ext == ".java") lang = "java";
             else if (ext == ".zh") lang = "zh";
-            std::filesystem::path output_exe = output.empty() ? 
+            fs::path output_exe = output.empty() ? 
                 input_path.parent_path() / (input_path.stem().string() + ".exe") : 
-                std::filesystem::path(output);
+                fs::path(output);
             int rc = selfhost::pack_from_file(lang, input_path, output_exe);
             if (rc == 0) std::printf("[selfhost] packed -> %s\n", output_exe.string().c_str());
             return rc;
@@ -2430,7 +2397,50 @@ int main(int argc, char** argv) {
         std::string file = argv[2];
         return build_system.compile_file(file, output, verbose, true);
     } else {
+        // ?瑼?
+        auto get_ext = [](const std::string& p){
+            size_t dot = p.find_last_of('.');
+            return (dot == std::string::npos) ? std::string() : p.substr(dot);
+        };
+        std::string ext = get_ext(command);
+
+        // --- ?啣?嚗?zh + --to cpp ?湔?澆蝜葉?垢頧?C++ ---
+        // 瘜冽?嚗ㄐ銝??餃??cl/gcc嚗?蝎嫘?瑼?蝯???
+        if (ext == ".zh" && (to_lang == "cpp" || to_lang == "c++")) {
+            std::string out_cpp = output;
+            if (out_cpp.empty()) {
+                // ?身頛詨瑼?嚗?input_basename>.cpp
+                std::string base = command;
+                size_t slash = base.find_last_of("\\/");
+                if (slash != std::string::npos) base = base.substr(slash + 1);
+                size_t dot = base.find_last_of('.');
+                if (dot != std::string::npos) base = base.substr(0, dot);
+                out_cpp = base + ".cpp";
+            }
+
+            int rc = translate_zh_to_cpp(command, out_cpp, verbose);
+            if (rc != 0) {
+                std::fprintf(stderr, "[zhcl] zh -> cpp failed (%d)\n", rc);
+                return rc;
+            }
+            if (verbose) std::printf("[zhcl] emitted C++ -> %s\n", out_cpp.c_str());
+            return 0; // 頧?摰?嚗??脣銝?祉楊霅舀?蝔?
+        }
+
         // Assume it's a file to compile
+        if (force_vm) {
+            if (ext == ".c" || ext == ".cpp") {
+                return cmd_run(command, "");
+            } else {
+                std::cerr << "--vm only supported for .c/.cpp files\n";
+                return 1;
+            }
+        }
+        if (no_detect && (ext == ".c" || ext == ".cpp")) {
+            std::cerr << "External compiler detection disabled. Use `run` (VM) instead:\n";
+            std::cerr << "  zhcl run " << command << "\n";
+            return 2;
+        }
         return build_system.compile_file(command, output, verbose, false);
     }
 }
@@ -2443,7 +2453,7 @@ int initialize_project(bool verbose) {
     if (verbose) std::cout << "Initializing new zhcl project..." << std::endl;
 
     // Create zhcl.toml
-    ofstream config("zhcl.toml");
+    std::ofstream config("zhcl.toml");
     config << "[project]\n";
     config << "name = \"my_project\"\n";
     config << "version = \"0.1.0\"\n";
@@ -2456,7 +2466,7 @@ int initialize_project(bool verbose) {
     config.close();
 
     // Create main.cpp
-    ofstream main_cpp("main.cpp");
+    std::ofstream main_cpp("main.cpp");
     main_cpp << "#include <iostream>\n";
     main_cpp << "\n";
     main_cpp << "int main() {\n";
@@ -2466,7 +2476,7 @@ int initialize_project(bool verbose) {
     main_cpp.close();
 
     // Create README.md
-    ofstream readme("README.md");
+    std::ofstream readme("README.md");
     readme << "# My zhcl Project\n";
     readme << "\n";
     readme << "Built with zhcl - the universal compiler.\n";
@@ -2489,12 +2499,12 @@ int initialize_project(bool verbose) {
 int list_compilers(const CompilerRegistry& registry, bool verbose) {
     // Only show built-in supported languages (no external dependencies needed)
     std::cout << "Built-in supported languages (no external dependencies):" << std::endl;
-    std::cout << "  內建 C/C++ (via MSVC/gcc detection)" << std::endl;
-    std::cout << "  內建 Java (bytecode generation)" << std::endl;
-    std::cout << "  內建 Go (translation to C++)" << std::endl;
-    std::cout << "  內建 Chinese (.zh files) - 繁體優先：輸出/字串/整數/設為/如果/否則/當/結束" << std::endl;
-    std::cout << "  內建 Python (translation to C++)" << std::endl;
-    std::cout << "  內建 JavaScript (translation to C++)" << std::endl;
+    std::cout << "  ?批遣 C/C++ (via MSVC/gcc detection)" << std::endl;
+    std::cout << "  ?批遣 Java (bytecode generation)" << std::endl;
+    std::cout << "  ?批遣 Go (translation to C++)" << std::endl;
+    std::cout << "  ?批遣 Chinese (.zh files) - 蝜??芸?嚗撓??摮葡/?湔/閮剔/憒?/?血?/??蝯?" << std::endl;
+    std::cout << "  ?批遣 Python (translation to C++)" << std::endl;
+    std::cout << "  ?批遣 JavaScript (translation to C++)" << std::endl;
 
     return 0;
 }
@@ -2507,12 +2517,12 @@ int clean_project(bool verbose) {
     for (const auto& pattern : patterns) {
         for (const auto& entry : fs::recursive_directory_iterator(".")) {
             std::string filename = entry.path().filename().string();
-            if (entry.is_regular_file()) {
+            if (fs::is_regular_file(entry.path())) {
                 if (matches_pattern(filename, pattern)) {
                     fs::remove(entry.path());
                     if (verbose) std::cout << "Removed: " << entry.path() << std::endl;
                 }
-            } else if (entry.is_directory() && filename == "__pycache__") {
+            } else if (fs::is_directory(entry.path()) && filename == "__pycache__") {
                 fs::remove_all(entry.path());
                 if (verbose) std::cout << "Removed directory: " << entry.path() << std::endl;
             }
@@ -2530,3 +2540,4 @@ bool matches_pattern(const std::string& filename, const std::string& pattern) {
     if (pattern == "*.pyc") return filename.find(".pyc") != std::string::npos;
     return false;
 }
+
