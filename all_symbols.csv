@@ -1,0 +1,509 @@
+﻿類型,分類,中文名稱,英文名稱,C語言名稱,描述,來源文件,範例,狀態,簽名,格式提示,語言
+已知符號,數據類型,整數,,int,32位整數,symbols.yml,,已記錄,,,
+已知符號,數據類型,小數,,float,32位浮點,symbols.yml,,已記錄,,,
+已知符號,數據類型,雙精度小數,,double,64位浮點,symbols.yml,,已記錄,,,
+已知符號,數據類型,布林,,bool,布林值 true/false,symbols.yml,,已記錄,,,
+已知符號,數據類型,字串,,char*,以null結尾的字串,symbols.yml,,已記錄,,,
+已知符號,常數,圓周率,,3.141592653589793,π 常數,symbols.yml,,已記錄,,,
+已知符號,函數,輸出字串,,printf,輸出字串並換行,symbols.yml,"輸出字串(""你好"")",已記錄,void (訊息:字串),"%s
+",
+已知符號,函數,輸出整數,,printf,輸出整數並換行,symbols.yml,輸出整數(42),已記錄,void (值:整數),"%d
+",
+已知符號,函數,輸出小數,,printf,輸出浮點數並換行,symbols.yml,小數 x = 3.14； 輸出小數(x),已記錄,void (值:小精度小數|雙精度小數),"%f
+",
+已知符號,函數,輸出布林,,printf,true/false 以 1/0 形式輸出,symbols.yml,布林 ok = 真； 輸出布林(ok),已記錄,void (值:布林),"%d
+",
+已知符號,函數,隨機數,,rand,回傳 0..RAND_MAX 的隨機整數,symbols.yml,整數 r = 隨機數()； 輸出整數(r),已記錄,整數 (),,
+已知符號,函數,長度,,strlen,取得字串長度（位元組）,symbols.yml,"字串 s = ""你好""； 輸出整數(長度(s))",已記錄,整數 (字串值:字串),,
+關鍵字,關鍵字_PRINT,,show,,en 語言的 PRINT 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_PRINT,,print,,en 語言的 PRINT 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_LET,,let,,en 語言的 LET 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_LET,,var,,en 語言的 LET 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_EQUAL,,=,,en 語言的 EQUAL 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_IF,,if,,en 語言的 IF 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_THEN,,then,,en 語言的 THEN 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_ELSE,,else,,en 語言的 ELSE 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_LOOP,,repeat,,en 語言的 LOOP 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_LOOP,,loop,,en 語言的 LOOP 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_TIMES,,times,,en 語言的 TIMES 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_DEF,,def,,en 語言的 DEF 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_RETURN,,return,,en 語言的 RETURN 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_BEGIN,,begin,,en 語言的 BEGIN 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_BEGIN,,{,,en 語言的 BEGIN 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_END,,end,,en 語言的 END 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_END,,},,en 語言的 END 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_OPENQ,,"""",,en 語言的 OPENQ 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_CLOSEQ,,"""",,en 語言的 CLOSEQ 關鍵字,locales\en.json,,已記錄,,,en
+關鍵字,關鍵字_PRINT,,,,ko_template 語言的 PRINT 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_PRINT,,,,ko_template 語言的 PRINT 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_LET,,,,ko_template 語言的 LET 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_LET,,,,ko_template 語言的 LET 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_EQUAL,,,,ko_template 語言的 EQUAL 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_IF,,,,ko_template 語言的 IF 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_THEN,,,,ko_template 語言的 THEN 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_ELSE,,,,ko_template 語言的 ELSE 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_LOOP,,,,ko_template 語言的 LOOP 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_LOOP,,,,ko_template 語言的 LOOP 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_TIMES,,,,ko_template 語言的 TIMES 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_DEF,,,,ko_template 語言的 DEF 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_RETURN,,,,ko_template 語言的 RETURN 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_BEGIN,,,,ko_template 語言的 BEGIN 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_BEGIN,,,,ko_template 語言的 BEGIN 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_END,,,,ko_template 語言的 END 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_END,,,,ko_template 語言的 END 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_OPENQ,,,,ko_template 語言的 OPENQ 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_CLOSEQ,,,,ko_template 語言的 CLOSEQ 關鍵字,locales\ko_template.json,,已記錄,,,ko_template
+關鍵字,關鍵字_PRINT,顯示,,,zh-TW 語言的 PRINT 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_PRINT,輸出,,,zh-TW 語言的 PRINT 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_LET,變數,,,zh-TW 語言的 LET 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_LET,設定,,,zh-TW 語言的 LET 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_LET,設,,,zh-TW 語言的 LET 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_EQUAL,=,,,zh-TW 語言的 EQUAL 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_EQUAL,為,,,zh-TW 語言的 EQUAL 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_EQUAL,是,,,zh-TW 語言的 EQUAL 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_IF,若,,,zh-TW 語言的 IF 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_IF,如果,,,zh-TW 語言的 IF 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_THEN,則,,,zh-TW 語言的 THEN 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_THEN,那麼,,,zh-TW 語言的 THEN 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_ELSE,否則,,,zh-TW 語言的 ELSE 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_ELSE,不然,,,zh-TW 語言的 ELSE 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_LOOP,重複,,,zh-TW 語言的 LOOP 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_LOOP,迴圈,,,zh-TW 語言的 LOOP 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_TIMES,次,,,zh-TW 語言的 TIMES 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_DEF,定義,,,zh-TW 語言的 DEF 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_DEF,定義 函數,,,zh-TW 語言的 DEF 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_RETURN,回傳,,,zh-TW 語言的 RETURN 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_BEGIN,開始,,,zh-TW 語言的 BEGIN 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_END,結束,,,zh-TW 語言的 END 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_OPENQ,「,,,zh-TW 語言的 OPENQ 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_OPENQ,“,,,zh-TW 語言的 OPENQ 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_OPENQ,"""",,,zh-TW 語言的 OPENQ 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_CLOSEQ,」,,,zh-TW 語言的 CLOSEQ 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_CLOSEQ,”,,,zh-TW 語言的 CLOSEQ 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_CLOSEQ,"""",,,zh-TW 語言的 CLOSEQ 關鍵字,locales\zh-TW.json,,已記錄,,,zh-TW
+關鍵字,關鍵字_PRINT,,print,,內建 en 語言的 PRINT 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_LET,,let,,內建 en 語言的 LET 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_LET,,var,,內建 en 語言的 LET 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_EQUAL,,=,,內建 en 語言的 EQUAL 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_IF,,if,,內建 en 語言的 IF 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_THEN,,then,,內建 en 語言的 THEN 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_ELSE,,else,,內建 en 語言的 ELSE 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_LOOP,,repeat,,內建 en 語言的 LOOP 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_LOOP,,loop,,內建 en 語言的 LOOP 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_TIMES,,times,,內建 en 語言的 TIMES 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_DEF,,def,,內建 en 語言的 DEF 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_RETURN,,return,,內建 en 語言的 RETURN 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_BEGIN,,begin,,內建 en 語言的 BEGIN 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_BEGIN,,{,,內建 en 語言的 BEGIN 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_END,,end,,內建 en 語言的 END 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_END,,},,內建 en 語言的 END 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_INT,,int,,內建 en 語言的 INT 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_VOID,,void,,內建 en 語言的 VOID 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_MAIN,,main,,內建 en 語言的 MAIN 關鍵字,cn2c_compiler.py,,內建,,,en
+關鍵字,關鍵字_PRINT,顯示,,,內建 zh-TW 語言的 PRINT 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_PRINT,輸出,,,內建 zh-TW 語言的 PRINT 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_LET,變數,,,內建 zh-TW 語言的 LET 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_LET,設定,,,內建 zh-TW 語言的 LET 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_LET,設,,,內建 zh-TW 語言的 LET 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_EQUAL,=,,,內建 zh-TW 語言的 EQUAL 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_EQUAL,為,,,內建 zh-TW 語言的 EQUAL 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_EQUAL,是,,,內建 zh-TW 語言的 EQUAL 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_IF,若,,,內建 zh-TW 語言的 IF 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_IF,如果,,,內建 zh-TW 語言的 IF 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_THEN,則,,,內建 zh-TW 語言的 THEN 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_THEN,那麼,,,內建 zh-TW 語言的 THEN 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_ELSE,否則,,,內建 zh-TW 語言的 ELSE 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_ELSE,不然,,,內建 zh-TW 語言的 ELSE 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_LOOP,重複,,,內建 zh-TW 語言的 LOOP 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_LOOP,迴圈,,,內建 zh-TW 語言的 LOOP 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_TIMES,次,,,內建 zh-TW 語言的 TIMES 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_DEF,定義,,,內建 zh-TW 語言的 DEF 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_DEF,定義函數,,,內建 zh-TW 語言的 DEF 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_RETURN,回傳,,,內建 zh-TW 語言的 RETURN 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_BEGIN,開始,,,內建 zh-TW 語言的 BEGIN 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_END,結束,,,內建 zh-TW 語言的 END 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_OPENQ,「,,,內建 zh-TW 語言的 OPENQ 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_OPENQ,“,,,內建 zh-TW 語言的 OPENQ 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_CLOSEQ,」,,,內建 zh-TW 語言的 CLOSEQ 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_CLOSEQ,”,,,內建 zh-TW 語言的 CLOSEQ 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_INT,整數,,,內建 zh-TW 語言的 INT 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_VOID,無回傳,,,內建 zh-TW 語言的 VOID 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+關鍵字,關鍵字_MAIN,主函數,,,內建 zh-TW 語言的 MAIN 關鍵字,cn2c_compiler.py,,內建,,,zh-TW
+詞彙符號,詞彙符號,,AUTO,auto,詞法分析器定義的 AUTO 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,BREAK,break,詞法分析器定義的 BREAK 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,CASE,case,詞法分析器定義的 CASE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,CHAR,char,詞法分析器定義的 CHAR 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,CONST,const,詞法分析器定義的 CONST 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,CONTINUE,continue,詞法分析器定義的 CONTINUE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DEFAULT,default,詞法分析器定義的 DEFAULT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DO,do,詞法分析器定義的 DO 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DOUBLE,double,詞法分析器定義的 DOUBLE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,ELSE,else,詞法分析器定義的 ELSE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,ENUM,enum,詞法分析器定義的 ENUM 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,EXTERN,extern,詞法分析器定義的 EXTERN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,FLOAT,float,詞法分析器定義的 FLOAT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,FOR,for,詞法分析器定義的 FOR 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,GOTO,goto,詞法分析器定義的 GOTO 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,IF,if,詞法分析器定義的 IF 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,INLINE,inline,詞法分析器定義的 INLINE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,INT,int,詞法分析器定義的 INT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,LONG,long,詞法分析器定義的 LONG 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,REGISTER,register,詞法分析器定義的 REGISTER 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,RESTRICT,restrict,詞法分析器定義的 RESTRICT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,RETURN,return,詞法分析器定義的 RETURN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SHORT,short,詞法分析器定義的 SHORT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SIGNED,signed,詞法分析器定義的 SIGNED 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SIZEOF,sizeof,詞法分析器定義的 SIZEOF 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,STATIC,static,詞法分析器定義的 STATIC 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,STRUCT,struct,詞法分析器定義的 STRUCT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SWITCH,switch,詞法分析器定義的 SWITCH 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,TYPEDEF,typedef,詞法分析器定義的 TYPEDEF 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,UNION,union,詞法分析器定義的 UNION 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,UNSIGNED,unsigned,詞法分析器定義的 UNSIGNED 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,VOID,void,詞法分析器定義的 VOID 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,VOLATILE,volatile,詞法分析器定義的 VOLATILE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,WHILE,while,詞法分析器定義的 WHILE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,BOOL,bool,詞法分析器定義的 BOOL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,CATCH,catch,詞法分析器定義的 CATCH 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,CLASS,class,詞法分析器定義的 CLASS 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,CONST_CAST,const_cast,詞法分析器定義的 CONST_CAST 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DELETE,delete,詞法分析器定義的 DELETE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DYNAMIC_CAST,dynamic_cast,詞法分析器定義的 DYNAMIC_CAST 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,EXPLICIT,explicit,詞法分析器定義的 EXPLICIT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,EXPORT,export,詞法分析器定義的 EXPORT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,FALSE,false,詞法分析器定義的 FALSE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,FRIEND,friend,詞法分析器定義的 FRIEND 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,MUTABLE,mutable,詞法分析器定義的 MUTABLE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,NAMESPACE,namespace,詞法分析器定義的 NAMESPACE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,NEW,new,詞法分析器定義的 NEW 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,OPERATOR,operator,詞法分析器定義的 OPERATOR 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,PRIVATE,private,詞法分析器定義的 PRIVATE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,PROTECTED,protected,詞法分析器定義的 PROTECTED 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,PUBLIC,public,詞法分析器定義的 PUBLIC 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,REINTERPRET_CAST,reinterpret_cast,詞法分析器定義的 REINTERPRET_CAST 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,STATIC_CAST,static_cast,詞法分析器定義的 STATIC_CAST 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,TEMPLATE,template,詞法分析器定義的 TEMPLATE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,THIS,this,詞法分析器定義的 THIS 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,THROW,throw,詞法分析器定義的 THROW 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,TRUE,true,詞法分析器定義的 TRUE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,TRY,try,詞法分析器定義的 TRY 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,TYPEID,typeid,詞法分析器定義的 TYPEID 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,TYPENAME,typename,詞法分析器定義的 TYPENAME 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,USING,using,詞法分析器定義的 USING 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,VIRTUAL,virtual,詞法分析器定義的 VIRTUAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,WCHAR_T,wchar_t,詞法分析器定義的 WCHAR_T 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,PLUS,+,詞法分析器定義的 PLUS 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,MINUS,-,詞法分析器定義的 MINUS 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,MULTIPLY,*,詞法分析器定義的 MULTIPLY 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DIVIDE,/,詞法分析器定義的 DIVIDE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,MODULO,%,詞法分析器定義的 MODULO 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,ASSIGN,=,詞法分析器定義的 ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,EQUAL,==,詞法分析器定義的 EQUAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,NOT_EQUAL,!=,詞法分析器定義的 NOT_EQUAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,LESS,<,詞法分析器定義的 LESS 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,LESS_EQUAL,<=,詞法分析器定義的 LESS_EQUAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,GREATER,>,詞法分析器定義的 GREATER 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,GREATER_EQUAL,>=,詞法分析器定義的 GREATER_EQUAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,AND,&&,詞法分析器定義的 AND 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,OR,||,詞法分析器定義的 OR 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,NOT,!,詞法分析器定義的 NOT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,BIT_AND,&,詞法分析器定義的 BIT_AND 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,BIT_OR,|,詞法分析器定義的 BIT_OR 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,BIT_XOR,^,詞法分析器定義的 BIT_XOR 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,BIT_NOT,~,詞法分析器定義的 BIT_NOT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SHIFT_LEFT,<<,詞法分析器定義的 SHIFT_LEFT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SHIFT_RIGHT,>>,詞法分析器定義的 SHIFT_RIGHT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,PLUS_ASSIGN,+=,詞法分析器定義的 PLUS_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,MINUS_ASSIGN,-=,詞法分析器定義的 MINUS_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,MULTIPLY_ASSIGN,*=,詞法分析器定義的 MULTIPLY_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DIVIDE_ASSIGN,/=,詞法分析器定義的 DIVIDE_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,MODULO_ASSIGN,%=,詞法分析器定義的 MODULO_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,AND_ASSIGN,&=,詞法分析器定義的 AND_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,OR_ASSIGN,|=,詞法分析器定義的 OR_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,XOR_ASSIGN,^=,詞法分析器定義的 XOR_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SHIFT_LEFT_ASSIGN,<<=,詞法分析器定義的 SHIFT_LEFT_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SHIFT_RIGHT_ASSIGN,>>=,詞法分析器定義的 SHIFT_RIGHT_ASSIGN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,INCREMENT,++,詞法分析器定義的 INCREMENT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DECREMENT,--,詞法分析器定義的 DECREMENT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,ARROW,->,詞法分析器定義的 ARROW 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,DOT,.,詞法分析器定義的 DOT 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,LEFT_PAREN,(,詞法分析器定義的 LEFT_PAREN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,RIGHT_PAREN,),詞法分析器定義的 RIGHT_PAREN 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,LEFT_BRACKET,[,詞法分析器定義的 LEFT_BRACKET 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,RIGHT_BRACKET,],詞法分析器定義的 RIGHT_BRACKET 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,LEFT_BRACE,{,詞法分析器定義的 LEFT_BRACE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,RIGHT_BRACE,},詞法分析器定義的 RIGHT_BRACE 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,COMMA,",",詞法分析器定義的 COMMA 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SEMICOLON,;,詞法分析器定義的 SEMICOLON 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,COLON,:,詞法分析器定義的 COLON 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,QUESTION,?,詞法分析器定義的 QUESTION 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,SCOPE_RESOLUTION,::,詞法分析器定義的 SCOPE_RESOLUTION 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,INTEGER_LITERAL,integer_literal,詞法分析器定義的 INTEGER_LITERAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,FLOAT_LITERAL,float_literal,詞法分析器定義的 FLOAT_LITERAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,CHAR_LITERAL,char_literal,詞法分析器定義的 CHAR_LITERAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,STRING_LITERAL,string_literal,詞法分析器定義的 STRING_LITERAL 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,IDENTIFIER,identifier,詞法分析器定義的 IDENTIFIER 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,EOF,eof,詞法分析器定義的 EOF 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,HASH,#,詞法分析器定義的 HASH 符號,lexer.py,,系統定義,,,
+詞彙符號,詞彙符號,,UNKNOWN,unknown,詞法分析器定義的 UNKNOWN 符號,lexer.py,,系統定義,,,
+隱藏符號,隱藏關鍵字映射,整數,int,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小數,float,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,浮點數,float,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,雙精度,double,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,字符,char,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,字串,char*,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,布林,bool,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,無符號整數,unsigned int,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,長整數,long,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,短整數,short,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,如果,if,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,否則,else,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,否則如果,else if,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,當,while,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,對於,for,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,循環,loop,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,返回,return,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,中斷,break,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,繼續,continue,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,函數,function,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,主函數,main,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,空值,void,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,參數,param,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,返回值,return,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,印出,printf,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,輸出,printf,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,格式化輸出,printf,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,格式化輸入,scanf,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,等於,==,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,不等於,!=,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大於,>,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小於,<,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大於等於,>=,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小於等於,<=,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,且,&&,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,或,||,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,非,!,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,加,+,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,減,-,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,乘,*,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,除,/,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,取餘,%,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,賦值,=,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,加等,+=,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,減等,-=,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,乘等,*=,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,除等,/=,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,隨機數,rand,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,長度,strlen,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,複製,strcpy,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,比較,strcmp,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,連接,strcat,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,尋找,strstr,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,平方根,sqrt,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,絕對值,abs,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,冪運算,pow,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,真,true,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,假,false,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,空,NULL,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大小,sizeof,,在代碼中發現的隱藏關鍵字映射,zhcc_complex.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,整數,int,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小數,double,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,雙精度小數,double,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,字符,char,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,字串,char*,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,布林,bool,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,如果,if,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,否則,else,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,當,while,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,對於,for,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,返回,return,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,主函數,main,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,等於,==,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大於,>,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小於,<,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大於等於,>=,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小於等於,<=,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,不等於,!=,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,且,&&,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,或,||,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,非,!,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,加,+,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,減,-,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,乘,*,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,除,/,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,取餘,%,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,真,true,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,假,false,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,空,NULL,,在代碼中發現的隱藏關鍵字映射,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏運算符,,", r",", r",在代碼中發現的隱藏運算符定義,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏運算符,,", c_code)
+    c_code = re.sub(r",", c_code)
+    c_code = re.sub(r",在代碼中發現的隱藏運算符定義,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏運算符,,", r",", r",在代碼中發現的隱藏運算符定義,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏運算符,,", c_code)
+
+    # 處理語句分號：在每行結尾添加分號（如果還沒有的話）
+    lines = c_code.split(",", c_code)
+
+    # 處理語句分號：在每行結尾添加分號（如果還沒有的話）
+    lines = c_code.split(",在代碼中發現的隱藏運算符定義,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏運算符,,")
+    processed_lines = []
+    for line in lines:
+        line = line.rstrip()
+        if line.strip():  # 非空行
+            # 如果行包含函數調用或變數聲明，且不以分號結尾，且不是控制結構，添加分號
+            if (not line.endswith(",")
+    processed_lines = []
+    for line in lines:
+        line = line.rstrip()
+        if line.strip():  # 非空行
+            # 如果行包含函數調用或變數聲明，且不以分號結尾，且不是控制結構，添加分號
+            if (not line.endswith(",在代碼中發現的隱藏運算符定義,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏運算符,,") and
+                not line.strip().startswith(",") and
+                not line.strip().startswith(",在代碼中發現的隱藏運算符定義,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏運算符,,") and
+                not line.strip().endswith(",") and
+                not line.strip().endswith(",在代碼中發現的隱藏運算符定義,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏運算符,,") and
+                not line.strip().endswith(",") and
+                not line.strip().endswith(",在代碼中發現的隱藏運算符定義,zhcc_pro.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,整數,int,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,浮點數,float,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,雙精度,double,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,字符,char,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,字串,char*,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,布林,bool,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,無符號整數,unsigned int,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,長整數,long,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,短整數,short,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,如果,if,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,否則,else,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,否則如果,else if,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,當,while,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,對於,for,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,循環,loop,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,返回,return,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,中斷,break,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,繼續,continue,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,函數,function,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,主函數,main,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,空值,void,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,參數,param,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,返回值,return,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,印出,printf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,輸出,printf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,輸入,scanf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,格式化輸出,printf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,格式化輸入,scanf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,等於,==,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,不等於,!=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大於,>,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小於,<,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大於等於,>=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小於等於,<=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,且,&&,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,或,||,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,非,!,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,加,+,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,減,-,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,乘,*,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,除,/,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,取餘,%,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,賦值,=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,加等,+=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,減等,-=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,乘等,*=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,除等,/=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,隨機數,rand,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,長度,strlen,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,複製,strcpy,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,比較,strcmp,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,連接,strcat,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,尋找,strstr,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,平方根,sqrt,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,絕對值,abs,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,冪運算,pow,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,真,true,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,假,false,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,空,NULL,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大小,sizeof,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏運算符,,zh_TW.UTF-8,zh_TW.UTF-8,在代碼中發現的隱藏運算符定義,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏運算符,,zh_TW.UTF-8,zh_TW.UTF-8,在代碼中發現的隱藏運算符定義,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏運算符,,Chinese_Traditional,Chinese_Traditional,在代碼中發現的隱藏運算符定義,chinese_compiler_toolchain.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,整數,int,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,浮點數,float,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,雙精度,double,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,字符,char,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,字串,char*,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,布林,bool,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,無符號整數,unsigned int,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,長整數,long,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,短整數,short,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小數,float,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,雙精度小數,double,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,真,true,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,假,false,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,如果,if,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,否則,else,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,否則如果,else if,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,當,while,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,對於,for,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,循環,loop,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,返回,return,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,中斷,break,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,繼續,continue,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,函數,function,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,主函數,main,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,空值,void,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,參數,param,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,返回值,return,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,印出,printf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,輸出,printf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,輸入,scanf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,格式化輸出,printf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,格式化輸入,scanf,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,等於,==,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,不等於,!=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大於,>,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小於,<,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大於等於,>=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,小於等於,<=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,且,&&,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,或,||,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,非,!,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,加,+,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,減,-,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,乘,*,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,除,/,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,取餘,%,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,賦值,=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,加等,+=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,減等,-=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,乘等,*=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,除等,/=,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,隨機數,rand,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,長度,strlen,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,平方根,sqrt,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,絕對值,abs,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,冪運算,pow,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,分配,malloc,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,釋放,free,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,重新分配,realloc,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,複製,strcpy,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,連接,strcat,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,比較,strcmp,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,真,true,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,假,false,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,空,NULL,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,大小,sizeof,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,圓周率,3.141592653589793,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏關鍵字映射,自然常數,2.718281828459045,,在代碼中發現的隱藏關鍵字映射,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏運算符,,zh_TW.UTF-8,zh_TW.UTF-8,在代碼中發現的隱藏運算符定義,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏運算符,,zh_TW.UTF-8,zh_TW.UTF-8,在代碼中發現的隱藏運算符定義,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+隱藏符號,隱藏運算符,,Chinese_Traditional,Chinese_Traditional,在代碼中發現的隱藏運算符定義,chinese_compiler_toolchain_fixed.py,,隱藏,,,
+未知符號,未知符號,,UNKNOWN,unknown,詞法分析器無法識別的符號,lexer.py,,系統定義,,,
+未知符號,未知符號,,__unknown__,,可能的未知符號模式: __unknown__,系統推斷,,推斷,,,
+未知符號,未知符號,未知,,,可能的未知符號模式: 未知,系統推斷,,推斷,,,
+未知符號,未知符號,,unknown,,可能的未知符號模式: unknown,系統推斷,,推斷,,,
