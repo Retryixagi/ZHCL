@@ -3,6 +3,11 @@
 #include <vector>
 #include <memory>
 
+// config
+#ifndef ZHCL_ENABLE_EXTERNAL_TOOLCHAIN
+#define ZHCL_ENABLE_EXTERNAL_TOOLCHAIN 0   // ← 預設關閉
+#endif
+
 struct FrontendContext {
     std::string path;
     std::string src;
