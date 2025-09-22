@@ -44,6 +44,9 @@ extern "C" void register_fe_clite();
 extern "C" void register_fe_cpplite();
 extern "C" void register_fe_jslite();
 extern "C" void register_fe_zh();
+extern "C" void register_fe_golite();
+extern "C" void register_fe_javalite();
+extern "C" void register_fe_pylite();
 
 // ======= SelfHost: payload trailer + runtime + packer (no external compilers) =======
 #ifdef _WIN32
@@ -86,6 +89,7 @@ enum Op : uint8_t {
     OP_PRINT = 1,
     OP_PRINT_INT,
     OP_SET_I64,
+    OP_COPY_I64,
     OP_END
 };
 
@@ -175,6 +179,11 @@ static void execute_bc(const std::vector<uint8_t>& bc){
             uint8_t id = bc[i++];
             int64_t v=0; for(int k=0;k<8;k++) v|=((int64_t)bc[i++])<<(8*k);
             vars[id] = v;
+        }else if(op==(uint8_t)OP_COPY_I64){
+            if(i+1>=bc.size()) break;
+            uint8_t dst = bc[i++];
+            uint8_t src = bc[i++];
+            vars[dst] = vars[src];
         }else if(op==(uint8_t)OP_END){
             break;
         }else break;
@@ -201,6 +210,11 @@ static void execute_bc(const std::vector<uint8_t>& bc){
             uint8_t id = bc[i++];
             int64_t v=0; for(int k=0;k<8;k++) v|=((int64_t)bc[i++])<<(8*k);
             vars[id] = v;
+        }else if(op==(uint8_t)OP_COPY_I64){
+            if(i+1>=bc.size()) break;
+            uint8_t dst = bc[i++];
+            uint8_t src = bc[i++];
+            vars[dst] = vars[src];
         }else if(op==(uint8_t)OP_END){
             break;
         }else break;
@@ -2133,7 +2147,7 @@ int cmd_list_frontends() {
   return 0;
 }
 
-int cmd_run(const std::string& path, const std::string& forced) {
+int cmd_run(const std::string& path, const std::string& forced, const std::vector<std::string>& extra_args) {
   std::string src;
   if (!read_file(path, src)) { std::cerr << "read fail: " << path << "\n"; return 1; }
   auto fe = forced.empty() ? FrontendRegistry::instance().match(path, src) : FrontendRegistry::instance().by_name(forced);
@@ -2142,6 +2156,33 @@ int cmd_run(const std::string& path, const std::string& forced) {
   FrontendContext ctx{path, src, true};
   Bytecode bc; std::string err;
   if (!fe->compile(ctx, bc, err)) { std::cerr << "compile err: " << err << "\n"; return 3; }
+
+  // 解析命令列參數並注入 SET_I64
+  std::vector<int64_t> args;
+  bool sep = false;
+  for (auto& a : extra_args) {
+    if (a == "--") { sep = true; continue; }
+    if (!sep) continue;
+    try {
+      args.push_back(std::stoll(a));
+    } catch (...) {
+      std::cerr << "Invalid arg: " << a << "\n";
+      return 4;
+    }
+  }
+
+  // 在 bc.data 开头插入 SET_I64
+  for (size_t i = 0; i < args.size(); ++i) {
+    bc.data.insert(bc.data.begin(), 0x03); // OP_SET_I64
+    bc.data.insert(bc.data.begin() + 1, (uint8_t)i); // slot
+    int64_t v = args[i];
+    for (int k = 0; k < 8; ++k) {
+      bc.data.insert(bc.data.begin() + 2 + k, (uint8_t)((uint64_t)v >> (k * 8)) & 0xFF);
+    }
+  }
+
+  // 確保 OP_END 在最後
+  if (bc.data.empty() || bc.data.back() != 0x04) bc.data.push_back(0x04);
 
   // ?瑁?嚗?怎?? VM
   selfhost::execute_bc(bc.data);
@@ -2177,6 +2218,9 @@ int main(int argc, char** argv) {
     register_fe_cpplite();
     register_fe_jslite();
     register_fe_zh();
+    register_fe_golite();
+    register_fe_javalite();
+    register_fe_pylite();
 
     // Frontends are auto-registered via static initializers
 
@@ -2185,21 +2229,15 @@ int main(int argc, char** argv) {
         return 0; // ?交?撠暹? payload嚗歇?瑁?銝?ExitProcess()嚗??芾絲閬?return
     }
 
-    // Check for --help first
-    if (argc >= 2 && std::string(argv[1]) == "--help") {
-        std::cout << "zhcl - Universal Compiler & Build System Replacement v1.0" << std::endl;
-        std::cout << "One CPP file to compile: C, C++, Java, Python, Go, JavaScript, Chinese, and more" << std::endl;
+    if (argc <= 1) {
+        std::cout << "zhcl - Universal VM & Selfhost System v1.0" << std::endl;
+        std::cout << "Run any supported language via built-in VM, no external compilers needed" << std::endl;
         std::cout << std::endl;
         std::cout << "Usage: zhcl <command> [options]" << std::endl;
         std::cout << std::endl;
         std::cout << "Commands:" << std::endl;
-        std::cout << "  <file>          Compile single file" << std::endl;
-        std::cout << "  build           Build entire project" << std::endl;
-        std::cout << "  run <file>      Run file directly (zh/js/py/go/java-lite)" << std::endl;
-        std::cout << "  init            Initialize new project" << std::endl;
-        std::cout << "  list            List available compilers" << std::endl;
+        std::cout << "  run <file>      Run file directly via VM (zh/c-lite/cpp-lite/js-lite)" << std::endl;
         std::cout << "  list-frontends  List available language frontends" << std::endl;
-        std::cout << "  clean           Clean build artifacts" << std::endl;
         std::cout << "  selfhost        Self-contained executable generation" << std::endl;
         std::cout << std::endl;
         std::cout << "Selfhost Commands:" << std::endl;
@@ -2208,241 +2246,147 @@ int main(int argc, char** argv) {
         std::cout << "  selfhost explain <input.(js|py|go|java|zh)>                Show bytecode disassembly" << std::endl;
         std::cout << std::endl;
         std::cout << "Options:" << std::endl;
-        std::cout << "  -o <output>     Output file" << std::endl;
-        std::cout << "  --verbose       Verbose output" << std::endl;
-        std::cout << "  --selfhost      Generate self-contained executable (compile cmd)" << std::endl;
-        std::cout << "  --help          Show help" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Environment Variables:" << std::endl;
-        std::cout << "  ZHCL_SELFHOST_QUIET=1    Suppress selfhost banner when running packed executables" << std::endl;
+        std::cout << "  --frontend=<name>  Force specific frontend (zh|c-lite|cpp-lite|js-lite)" << std::endl;
+        std::cout << "  -- <args...>       Pass integer arguments to VM slots (0,1,2,...)" << std::endl;
         std::cout << std::endl;
         std::cout << "Examples:" << std::endl;
-        std::cout << "  zhcl hello.c                                    # Compile C file" << std::endl;
-        std::cout << "  zhcl hello.java -o hello.class                  # Compile Java file" << std::endl;
-        std::cout << "  zhcl selfhost pack hello.js -o hello.exe        # Create self-contained exe" << std::endl;
-        std::cout << "  zhcl selfhost verify hello.exe                   # Verify exe integrity" << std::endl;
-        std::cout << "  set ZHCL_SELFHOST_QUIET=1 && hello.exe          # Run exe quietly" << std::endl;
+        std::cout << "  zhcl run hello.zh" << std::endl;
+        std::cout << "  zhcl run --frontend=c-lite hello.c" << std::endl;
+        std::cout << "  zhcl run script.zh -- 2025 3 20 16 0 0 -5" << std::endl;
+        std::cout << "  zhcl selfhost pack hello.js -o hello.exe" << std::endl;
         std::cout << std::endl;
-        std::cout << "Supported: C/C++, Java, Python, Go, JavaScript, Chinese (.zh - 蝜??芸?)" << std::endl;
-        std::cout << "Replaces: cl, gcc, g++, javac, cmake, make, and traditional build systems" << std::endl;
+        std::cout << "Supported: C/C++, Java, Python, Go, JavaScript, Chinese (.zh)" << std::endl;
+        std::cout << "No external compilers required - everything runs via built-in VM" << std::endl;
         return 0;
     }
 
-    std::string command = argv[1];
-    bool verbose = false;
-    std::string output;
-    std::string to_lang;  // 靘? "cpp", "c", ...
-    bool no_detect = skip_detect_from_env();
-    bool force_vm = false;
+    std::string cmd = argv[1];
 
-    // Parse global options
-    for (int i = 2; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg == "--verbose") {
-            verbose = true;
-        } else if (arg == "-o" && i + 1 < argc) {
-            output = argv[++i];
-        } else if (arg == "--to" && i + 1 < argc) {
-            to_lang = argv[++i];
-        } else if (arg == "--no-detect") {
-            no_detect = true;
-        } else if (arg == "--vm") {
-            force_vm = true;
-        }
+    // 完全 VM 的安全路徑
+    if (cmd == "--help" || cmd == "-h") {
+        // 上面已經處理了 argc <= 1 的情況，這裡重複一下
+        std::cout << "zhcl - Universal VM & Selfhost System v1.0" << std::endl;
+        std::cout << "Run any supported language via built-in VM, no external compilers needed" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Usage: zhcl <command> [options]" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Commands:" << std::endl;
+        std::cout << "  run <file>      Run file directly via VM (zh/c-lite/cpp-lite/js-lite)" << std::endl;
+        std::cout << "  list-frontends  List available language frontends" << std::endl;
+        std::cout << "  selfhost        Self-contained executable generation" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Selfhost Commands:" << std::endl;
+        std::cout << "  selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>    Pack source into self-contained exe" << std::endl;
+        std::cout << "  selfhost verify <exe>                                      Verify exe integrity" << std::endl;
+        std::cout << "  selfhost explain <input.(js|py|go|java|zh)>                Show bytecode disassembly" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Options:" << std::endl;
+        std::cout << "  --frontend=<name>  Force specific frontend (zh|c-lite|cpp-lite|js-lite)" << std::endl;
+        std::cout << "  -- <args...>       Pass integer arguments to VM slots (0,1,2,...)" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Examples:" << std::endl;
+        std::cout << "  zhcl run hello.zh" << std::endl;
+        std::cout << "  zhcl run --frontend=c-lite hello.c" << std::endl;
+        std::cout << "  zhcl run script.zh -- 2025 3 20 16 0 0 -5" << std::endl;
+        std::cout << "  zhcl selfhost pack hello.js -o hello.exe" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Supported: C/C++, Java, Python, Go, JavaScript, Chinese (.zh)" << std::endl;
+        std::cout << "No external compilers required - everything runs via built-in VM" << std::endl;
+        return 0;
     }
 
-    // ---- 不需要外部編譯器偵測的指令，直接回傳 ----
-    if (command == "list-frontends") {
+    if (cmd == "list-frontends") {
         return cmd_list_frontends();
-    } else if (command == "run") {
+    }
+    if (cmd == "run") {
+        if (argc < 3) {
+            std::cerr << "Usage: zhcl run <file> [--frontend=name] [-- args...]\n";
+            return 1;
+        }
         std::string file;
         std::string forced;
-        for (int i=2; i<argc; i++) {
+        std::vector<std::string> extra_args;
+        for (int i = 2; i < argc; ++i) {
             std::string a = argv[i];
-            if (a.rfind("--frontend=",0)==0) {
+            if (a.rfind("--frontend=", 0) == 0) {
                 forced = a.substr(11);
+            } else if (a == "--") {
+                for (int j = i + 1; j < argc; ++j) {
+                    extra_args.push_back(argv[j]);
+                }
+                break;
             } else if (file.empty()) {
                 file = a;
             } else {
-                // ignore extra
-            }
-        }
-        if (file.empty()) {
-            std::cerr << "Usage: zhcl run <file> [--frontend=name]\n";
-            return 1;
-        }
-        return cmd_run(file, forced);
-    } else if (command == "selfhost") {
-        if (argc < 3) {
-            std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>\n"
-                      "  zhcl_universal selfhost verify <exe>\n"
-                      "  zhcl_universal selfhost explain <input.(js|py|go|java|zh)>\n"
-                      "\n"
-                      "Note: Generated executables run silently by default. Use --prove/--proof/--selfhost-info\n"
-                      "      or set ZHCL_SELFHOST_SHOW=1 to display selfhost verification details.");
-            return 1;
-        }
-        std::string sub = argv[2];
-        if (sub == "pack") {
-            if (argc < 6 || std::string(argv[4]) != "-o") {
-                std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>");
-                return 2;
-            }
-            fs::path in = argv[3];
-            fs::path out = argv[5];
-            std::string lang;
-            auto ext = in.extension().string();
-            if (ext == ".js") lang = "js";
-            else if (ext == ".py") lang = "py";
-            else if (ext == ".go") lang = "go";
-            else if (ext == ".java") lang = "java";
-            else if (ext == ".zh") lang = "zh";
-            else { std::fprintf(stderr, "[selfhost] unsupported input: %s\n", ext.c_str()); return 2; }
-            int rc = selfhost::pack_from_file(lang, in, out);
-            return rc;
-        } else if (sub == "verify") {
-            if (argc < 4) { std::puts("Usage:\n  zhcl_universal selfhost verify <exe>"); return 2; }
-            return selfhost::verify_exe(argv[3]); // <== New
-        } else if (sub == "explain") {
-            return selfhost::handle_selfhost_explain(argc, argv);
-        }
-        std::fprintf(stderr, "Unknown subcommand: selfhost %s\n", sub.c_str());
-        return 1;
-    }
-
-    // ---- 下面的才建立 registry/build_system，並偵測編譯器 ----
-    CompilerRegistry registry;
-    if (command_needs_compiler_detect(command) && !no_detect) {
-        registry.detect_compilers();
-    }
-    BuildSystem build_system(&registry);
-
-    if (command == "build") {
-        return build_system.build_project(".", verbose);
-    } else if (command == "init") {
-        return initialize_project(verbose);
-    } else if (command == "list") {
-        return list_compilers(registry, verbose);
-    } else if (command == "clean") {
-        return clean_project(verbose);
-    } else if (command == "selfhost") {
-        if (argc < 3) {
-            std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>\n"
-                      "  zhcl_universal selfhost verify <exe>\n"
-                      "  zhcl_universal selfhost explain <input.(js|py|go|java|zh)>\n"
-                      "\n"
-                      "Note: Generated executables run silently by default. Use --prove/--proof/--selfhost-info\n"
-                      "      or set ZHCL_SELFHOST_SHOW=1 to display selfhost verification details.");
-            return 1;
-        }
-        std::string sub = argv[2];
-        if (sub == "pack") {
-            if (argc < 6 || std::string(argv[4]) != "-o") {
-                std::puts("Usage:\n  zhcl_universal selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>");
-                return 2;
-            }
-            fs::path in = argv[3];
-            fs::path out = argv[5];
-            std::string lang;
-            auto ext = in.extension().string();
-            if (ext == ".js") lang = "js";
-            else if (ext == ".py") lang = "py";
-            else if (ext == ".go") lang = "go";
-            else if (ext == ".java") lang = "java";
-            else if (ext == ".zh") lang = "zh";
-            else { std::fprintf(stderr, "[selfhost] unsupported input: %s\n", ext.c_str()); return 2; }
-            int rc = selfhost::pack_from_file(lang, in, out);
-            return rc;
-        } else if (sub == "verify") {
-            if (argc < 4) { std::puts("Usage:\n  zhcl_universal selfhost verify <exe>"); return 2; }
-            return selfhost::verify_exe(argv[3]); // <== New
-        } else if (sub == "explain") {
-            return selfhost::handle_selfhost_explain(argc, argv);
-        }
-        std::fprintf(stderr, "Unknown subcommand: selfhost %s\n", sub.c_str());
-        return 1;
-    } else if (command == "compile") {
-        if (argc < 3) {
-            std::cerr << "Usage: zhcl compile <file>" << std::endl;
-            return 1;
-        }
-        std::string file = argv[2];
-        bool opt_selfhost = false;
-        for (int i = 3; i < argc; ++i) {
-            if (std::string(argv[i]) == "--selfhost") opt_selfhost = true;
-        }
-        // ... ?斗頛詨?舀???
-        fs::path input_path(file);
-        auto ext = input_path.extension().string();
-        if (opt_selfhost && (ext == ".js" || ext == ".py" || ext == ".go" || ext == ".java" || ext == ".zh")) {
-            std::string lang;
-            if (ext == ".js") lang = "js";
-            else if (ext == ".py") lang = "py";
-            else if (ext == ".go") lang = "go";
-            else if (ext == ".java") lang = "java";
-            else if (ext == ".zh") lang = "zh";
-            fs::path output_exe = output.empty() ? 
-                input_path.parent_path() / (input_path.stem().string() + ".exe") : 
-                fs::path(output);
-            int rc = selfhost::pack_from_file(lang, input_path, output_exe);
-            if (rc == 0) std::printf("[selfhost] packed -> %s\n", output_exe.string().c_str());
-            return rc;
-        }
-        return build_system.compile_file(file, output, verbose, false);
-    } else if (command == "run") {
-        if (argc < 3) {
-            std::cerr << "Usage: zhcl run <file>" << std::endl;
-            return 1;
-        }
-        std::string file = argv[2];
-        return build_system.compile_file(file, output, verbose, true);
-    } else {
-        // ?瑼?
-        auto get_ext = [](const std::string& p){
-            size_t dot = p.find_last_of('.');
-            return (dot == std::string::npos) ? std::string() : p.substr(dot);
-        };
-        std::string ext = get_ext(command);
-
-        // --- ?啣?嚗?zh + --to cpp ?湔?澆蝜葉?垢頧?C++ ---
-        // 瘜冽?嚗ㄐ銝??餃??cl/gcc嚗?蝎嫘?瑼?蝯???
-        if (ext == ".zh" && (to_lang == "cpp" || to_lang == "c++")) {
-            std::string out_cpp = output;
-            if (out_cpp.empty()) {
-                // ?身頛詨瑼?嚗?input_basename>.cpp
-                std::string base = command;
-                size_t slash = base.find_last_of("\\/");
-                if (slash != std::string::npos) base = base.substr(slash + 1);
-                size_t dot = base.find_last_of('.');
-                if (dot != std::string::npos) base = base.substr(0, dot);
-                out_cpp = base + ".cpp";
-            }
-
-            int rc = translate_zh_to_cpp(command, out_cpp, verbose);
-            if (rc != 0) {
-                std::fprintf(stderr, "[zhcl] zh -> cpp failed (%d)\n", rc);
-                return rc;
-            }
-            if (verbose) std::printf("[zhcl] emitted C++ -> %s\n", out_cpp.c_str());
-            return 0; // 頧?摰?嚗??脣銝?祉楊霅舀?蝔?
-        }
-
-        // Assume it's a file to compile
-        if (force_vm) {
-            if (ext == ".c" || ext == ".cpp") {
-                return cmd_run(command, "");
-            } else {
-                std::cerr << "--vm only supported for .c/.cpp files\n";
+                // 不支援額外的參數，除非是 -- 之後的
+                std::cerr << "Unexpected argument: " << a << "\n";
+                std::cerr << "Usage: zhcl run <file> [--frontend=name] [-- args...]\n";
                 return 1;
             }
         }
-        if (no_detect && (ext == ".c" || ext == ".cpp")) {
-            std::cerr << "External compiler detection disabled. Use `run` (VM) instead:\n";
-            std::cerr << "  zhcl run " << command << "\n";
-            return 2;
+        if (file.empty()) {
+            std::cerr << "Usage: zhcl run <file> [--frontend=name] [-- args...]\n";
+            return 1;
         }
-        return build_system.compile_file(command, output, verbose, false);
+        return cmd_run(file, forced, extra_args);
     }
+    if (cmd == "selfhost") {
+        if (argc < 3) {
+            std::puts("Usage:\n  zhcl selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>\n"
+                      "  zhcl selfhost verify <exe>\n"
+                      "  zhcl selfhost explain <input.(js|py|go|java|zh)>\n"
+                      "\n"
+                      "Note: Generated executables run silently by default. Use --prove/--proof/--selfhost-info\n"
+                      "      or set ZHCL_SELFHOST_SHOW=1 to display selfhost verification details.");
+            return 1;
+        }
+        std::string sub = argv[2];
+        if (sub == "pack") {
+            if (argc < 6 || std::string(argv[4]) != "-o") {
+                std::puts("Usage:\n  zhcl selfhost pack <input.(js|py|go|java|zh)> -o <output.exe>");
+                return 2;
+            }
+            fs::path in = argv[3];
+            fs::path out = argv[5];
+            std::string lang;
+            auto ext = in.extension().string();
+            if (ext == ".js") lang = "js";
+            else if (ext == ".py") lang = "py";
+            else if (ext == ".go") lang = "go";
+            else if (ext == ".java") lang = "java";
+            else if (ext == ".zh") lang = "zh";
+            else { std::fprintf(stderr, "[selfhost] unsupported input: %s\n", ext.c_str()); return 2; }
+            int rc = selfhost::pack_from_file(lang, in, out);
+            return rc;
+        } else if (sub == "verify") {
+            if (argc < 4) { std::puts("Usage:\n  zhcl selfhost verify <exe>"); return 2; }
+            return selfhost::verify_exe(argv[3]);
+        } else if (sub == "explain") {
+            return selfhost::handle_selfhost_explain(argc, argv);
+        }
+        std::fprintf(stderr, "Unknown subcommand: selfhost %s\n", sub.c_str());
+        return 1;
+    }
+
+#if ZHCL_ENABLE_EXTERNAL_TOOLCHAIN
+    // （可選）外部編譯器相關子命令
+    // ... 保留舊邏輯 ...
+#else
+    // 關閉時，任何外部相關一律回覆提示
+    if (cmd == "list" || cmd == "build" || cmd == "compile" || cmd == "init" || cmd == "clean") {
+        std::cerr << "External toolchain is disabled. Use `run` or `selfhost pack`.\n";
+        return 2;
+    }
+#endif
+
+    // 直呼檔名的舊行為→全部改導到 VM
+    if (cmd.size() > 2 && cmd.find('.') != std::string::npos) {
+        // 舊用法: zhcl hello.c → 現在直接以 VM 跑
+        return cmd_run(cmd, "", {});
+    }
+
+    std::cerr << "Unknown command. Try --help.\n";
+    return 1;
 }
 
 // ============================================================================

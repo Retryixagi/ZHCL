@@ -13,9 +13,10 @@ static void emit_set_i64(std::vector<uint8_t>& bc, uint8_t slot, long long v){
   bc.push_back(slot);
   for(int i=0;i<8;++i) bc.push_back((uint8_t)((v>>(i*8))&0xFF));
 }
-static void emit_print_int(std::vector<uint8_t>& bc, uint8_t slot){
-  bc.push_back(0x02); // OP_PRINT_INT
-  bc.push_back(slot);
+static void emit_copy_i64(std::vector<uint8_t>& bc, uint8_t dst, uint8_t src){
+  bc.push_back(0x06); // OP_COPY_I64
+  bc.push_back(dst);
+  bc.push_back(src);
 }
 static void emit_end    (std::vector<uint8_t>& bc){ bc.push_back(0x04); } // OP_END
 

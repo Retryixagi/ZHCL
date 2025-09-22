@@ -46,12 +46,14 @@ std::vector<uint8_t> ZhFrontend::translate_to_bc(const std::string& src_in) {
     std::regex re_set_i64(u8"\u6578\u503C|\u6578\u5B57|\u6578\u5B50|\u6578\u5F0F"); // 兼容有需要可擴充
     // 使用更精準的「整數 X 設為 N」
     std::regex re_set_i64_exact(u8"\u6574\u6578\\s+([\\p{L}_][\\p{L}0-9_]*)\\s*\u8A2D\u70BA\\s*(-?[0-9]+)");
+    std::regex re_set_i64_slot(u8"\u6574\u6578\\s+([\\p{L}_][\\p{L}0-9_]*)\\s*\u8A2D\u70BA\\s*\u69FD\u4F4D([0-9]+)");
     std::regex re_print_i(u8"\u8F38\u51FA\\s*\u6574\u6578\\s+([\\p{L}_][\\p{L}0-9_]*)");
     // 添加对 C 风格的中文支持
     std::regex re_print_s_c(u8"輸出字串\\s*\\(\\s*\"([^\"]*)\"\\s*\\)\\s*;");
-    std::regex re_int_assign(R"(int\s+([A-Za-z_]\w*)\s*=\s*([0-9]+)\s*;)");
+    std::regex re_int_assign(R"(int\s+([\p{L}_][\p{L}0-9_]*)\s*=\s*([0-9]+)\s*;)");
+    std::regex re_int_assign_slot(R"(int\s+([\p{L}_][\p{L}0-9_]*)\s*=\s*槽位([0-9]+)\s*;)");
     std::regex re_puts(R"(puts\s*\(\s*\"([^\"]*)\"\s*\)\s*;)");
-    std::regex re_printf_d(R"(printf\s*\(\s*\"%d\"\s*,\s*([A-Za-z_]\w*)\s*\)\s*;)");
+    std::regex re_printf_d(R"(printf\s*\(\s*\"%d\"\s*,\s*(\w+)\s*\)\s*;)");
 
     std::stringstream ss(src);
     std::string line; std::smatch m;
@@ -82,6 +84,17 @@ std::vector<uint8_t> ZhFrontend::translate_to_bc(const std::string& src_in) {
             continue;
         }
 
+        // 整數 <變數> 設為 槽位<N>
+        if (std::regex_search(line, m, re_set_i64_slot)) {
+            std::string var = m[1].str();
+            uint8_t src_slot = (uint8_t)std::stoi(m[2].str());
+            uint8_t dst_slot = get_slot(var);
+            u8(bc, 0x05);  // OP_COPY_I64
+            u8(bc, dst_slot);
+            u8(bc, src_slot);
+            continue;
+        }
+
         // 輸出 整數 <變數>
         if (std::regex_search(line, m, re_print_i)) {
             std::string var = m[1].str();
@@ -108,6 +121,15 @@ std::vector<uint8_t> ZhFrontend::translate_to_bc(const std::string& src_in) {
             u8(bc, 0x03); // OP_SET_I64
             bc.push_back(slot);
             for(int i=0;i<8;++i) bc.push_back((uint8_t)((val>>(i*8))&0xFF));
+            continue;
+        }
+        if (std::regex_search(line, m, re_int_assign_slot)) {
+            std::string var = m[1].str();
+            uint8_t src_slot = (uint8_t)std::stoi(m[2].str());
+            uint8_t dst_slot = get_slot(var);
+            u8(bc, 0x05); // OP_COPY_I64
+            u8(bc, dst_slot);
+            u8(bc, src_slot);
             continue;
         }
         if (std::regex_search(line, m, re_puts)) {
