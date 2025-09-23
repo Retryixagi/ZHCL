@@ -4,32 +4,100 @@
 #include <map>
 #include <sstream>
 
-class FE_JavaLite final : public IFrontend {
+// 共用小工具：BOM/換行正規化
+static inline void strip_utf8_bom(std::string &s)
+{
+    if (s.size() >= 3 &&
+        (unsigned char)s[0] == 0xEF &&
+        (unsigned char)s[1] == 0xBB &&
+        (unsigned char)s[2] == 0xBF)
+    {
+        s.erase(0, 3);
+    }
+}
+
+static inline void normalize_newlines(std::string &s)
+{
+    // 把 CRLF/CR 全部正規化成 \n
+    std::string out;
+    out.reserve(s.size());
+    for (size_t i = 0; i < s.size(); ++i)
+    {
+        char c = s[i];
+        if (c == '\r')
+        {
+            if (i + 1 < s.size() && s[i + 1] == '\n')
+                ++i; // 吃掉 \r\n 的 \n
+            out.push_back('\n');
+        }
+        else
+        {
+            out.push_back(c);
+        }
+    }
+    s.swap(out);
+}
+
+class FE_JavaLite final : public IFrontend
+{
 public:
     std::string name() const override { return "java-lite"; }
-    bool accepts(const std::string& path, const std::string& src) const override;
-    bool compile(const FrontendContext& ctx, Bytecode& out, std::string& err) const override;
+    bool accepts(const std::string &path, const std::string &src) const override;
+    bool compile(const FrontendContext &ctx, Bytecode &out, std::string &err) const override;
 };
 
-static void u8(std::vector<uint8_t>& v, uint8_t x){ v.push_back(x); }
-static void u64le(std::vector<uint8_t>& v, uint64_t x){ for(int i=0;i<8;i++) v.push_back((uint8_t)(x>>(8*i))); }
-static void i64le(std::vector<uint8_t>& v, int64_t x){ u64le(v,(uint64_t)x); }
-static void emit_print(Bytecode& bc, const std::string& s){ u8(bc.data,0x01); u64le(bc.data,(uint64_t)s.size()); bc.data.insert(bc.data.end(), s.begin(), s.end()); }
-static void emit_set_i64(Bytecode& bc, uint8_t slot, int64_t v){ u8(bc.data,0x03); u8(bc.data,slot); i64le(bc.data,v); }
-static void emit_print_int(Bytecode& bc, uint8_t slot){ u8(bc.data,0x02); u8(bc.data,slot); }
+static void u8(std::vector<uint8_t> &v, uint8_t x) { v.push_back(x); }
+static void u64le(std::vector<uint8_t> &v, uint64_t x)
+{
+    for (int i = 0; i < 8; i++)
+        v.push_back((uint8_t)(x >> (8 * i)));
+}
+static void i64le(std::vector<uint8_t> &v, int64_t x) { u64le(v, (uint64_t)x); }
+static void emit_print(Bytecode &bc, const std::string &s)
+{
+    u8(bc.data, 0x01);
+    u64le(bc.data, (uint64_t)s.size());
+    bc.data.insert(bc.data.end(), s.begin(), s.end());
+}
+static void emit_set_i64(Bytecode &bc, uint8_t slot, int64_t v)
+{
+    u8(bc.data, 0x03);
+    u8(bc.data, slot);
+    i64le(bc.data, v);
+}
+static void emit_print_int(Bytecode &bc, uint8_t slot)
+{
+    u8(bc.data, 0x02);
+    u8(bc.data, slot);
+}
 
-bool FE_JavaLite::accepts(const std::string& path, const std::string& src) const {
-    if (path.size()>=5 && path.rfind(".java")==path.size()-5) return true;
-    if (src.find("System.out.println(")!=std::string::npos) return true;
-    if (src.find("class ")!=std::string::npos) return true;
+bool FE_JavaLite::accepts(const std::string &path, const std::string &src) const
+{
+    if (path.size() >= 5 && path.rfind(".java") == path.size() - 5)
+        return true;
+    if (src.find("System.out.println(") != std::string::npos)
+        return true;
+    if (src.find("class ") != std::string::npos)
+        return true;
     return false;
 }
 
-bool FE_JavaLite::compile(const FrontendContext& ctx, Bytecode& out, std::string& err) const {
-    std::map<std::string,uint8_t> slot;
-    auto slot_of = [&](const std::string& name)->uint8_t{
-        auto it=slot.find(name); if(it!=slot.end()) return it->second;
-        uint8_t id=(uint8_t)slot.size(); slot[name]=id; return id;
+bool FE_JavaLite::compile(const FrontendContext &ctx, Bytecode &out, std::string &err) const
+{
+    std::string src = ctx.src;
+    // BOM/換行正規化
+    strip_utf8_bom(src);
+    normalize_newlines(src);
+
+    std::map<std::string, uint8_t> slot;
+    auto slot_of = [&](const std::string &name) -> uint8_t
+    {
+        auto it = slot.find(name);
+        if (it != slot.end())
+            return it->second;
+        uint8_t id = (uint8_t)slot.size();
+        slot[name] = id;
+        return id;
     };
 
     std::regex re_print_s(R"(System\.out\.println\(\s*\"([^\"]*)\"\s*\)\s*;)");
@@ -37,17 +105,33 @@ bool FE_JavaLite::compile(const FrontendContext& ctx, Bytecode& out, std::string
     std::regex re_print_i(R"(System\.out\.println\(\s*([A-Za-z_]\w*)\s*\)\s*;)");
 
     std::string line;
-    std::stringstream ss(ctx.src);
-    while (std::getline(ss, line)) {
+    std::stringstream ss(src);
+    while (std::getline(ss, line))
+    {
         std::smatch m;
-        if (std::regex_search(line, m, re_print_s)) { emit_print(out, m[1].str()); continue; }
-        if (std::regex_search(line, m, re_set_i))   { auto id=slot_of(m[1].str()); emit_set_i64(out,id, std::stoll(m[2].str())); continue; }
-        if (std::regex_search(line, m, re_print_i)) { auto id=slot_of(m[1].str()); emit_print_int(out,id); continue; }
+        if (std::regex_search(line, m, re_print_s))
+        {
+            emit_print(out, m[1].str());
+            continue;
+        }
+        if (std::regex_search(line, m, re_set_i))
+        {
+            auto id = slot_of(m[1].str());
+            emit_set_i64(out, id, std::stoll(m[2].str()));
+            continue;
+        }
+        if (std::regex_search(line, m, re_print_i))
+        {
+            auto id = slot_of(m[1].str());
+            emit_print_int(out, id);
+            continue;
+        }
     }
     u8(out.data, 0x04);
     return true;
 }
 
-extern "C" void register_fe_javalite(){
+extern "C" void register_fe_javalite()
+{
     FrontendRegistry::instance().register_frontend(std::make_unique<FE_JavaLite>());
 }
